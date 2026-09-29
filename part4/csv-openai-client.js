@@ -26,6 +26,21 @@ const multiple=n=>n==null?"-":n.toFixed(2)+"배";
 const delta=n=>n==null?"-":(n>=0?"+":"")+n.toFixed(2)+"%";
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 
+export async function callAnalyzeShop(result, accessToken, question="2026년 9월 매출 하락의 핵심 구간과 데이터로 확인 가능한 원인 후보, 다음 액션을 분석해줘."){
+  if(!accessToken) throw new Error("로그인이 필요합니다. Supabase access token이 없습니다.");
+  const res=await fetch(API_URL,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":`Bearer ${accessToken}`
+    },
+    body:JSON.stringify({result,question})
+  });
+  const data=await res.json();
+  if(!res.ok) throw new Error(data?.detail?.error?.message||data?.error||"AI 분석 요청 실패");
+  return data;
+}
+
 async function render(){
   const btn=document.querySelector("#run");
   btn.disabled=true; btn.textContent="3번 CSV 읽는 중...";
@@ -46,9 +61,14 @@ async function render(){
     document.querySelector("#json").textContent=JSON.stringify(r,null,2);
     document.querySelector("#analysis").innerHTML="<h3>OpenAI 분석 결과</h3><p>1,200행 KPI 계산 완료. OpenAI가 결과를 해석하고 있습니다...</p>";
     btn.textContent="AI 분석 중...";
-    const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({result:r,question:"2026년 9월 매출 하락의 핵심 구간과 데이터로 확인 가능한 원인 후보, 다음 액션을 분석해줘."})});
-    const data=await res.json();
-    if(!res.ok) throw new Error(data?.detail?.error?.message||data?.error||"AI 분석 요청 실패");
+    // 2번 로그인 모듈이 window.supabaseClient 또는 getAccessToken()을 제공하면 연결됩니다.
+    let accessToken=null;
+    if(typeof window.getAccessToken==="function") accessToken=await window.getAccessToken();
+    else if(window.supabaseClient){
+      const {data:{session}}=await window.supabaseClient.auth.getSession();
+      accessToken=session?.access_token||null;
+    }
+    const data=await callAnalyzeShop(r,accessToken);
     document.querySelector("#analysis").innerHTML=`<h3>OpenAI 분석 결과</h3><pre class="ai">${esc(data.analysis||"응답이 비어 있습니다.")}</pre>`;
   }catch(e){
     document.querySelector("#analysis").innerHTML=`<h3>분석 오류</h3><p>${esc(e.message)}</p>`;
