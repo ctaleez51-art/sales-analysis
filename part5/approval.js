@@ -62,10 +62,6 @@
       { do: "경쟁가 진단 결과를 함께 본다", tool: "diagnostics" }, ai];
   }
 
-  function monthsOf(rows) {
-    return [...new Set(rows.map((r) => String(r.date || "").slice(0, 7)).filter(Boolean))].sort();
-  }
-
   // AI 계획 응답(화면연결_데이터모양 ②) → 화면용 단계. desc 가 없으면 do 도 받는다.
   function stepsFrom(data) {
     const list = Array.isArray(data) ? data : data?.steps;
@@ -91,9 +87,11 @@
       return;
     }
 
-    const months = monthsOf(rows);
-    const period = months.length >= 2 ? `${months.at(-2)} → ${months.at(-1)}` : (months[0] || "기간 없음");
-    const show = (steps, source) => showPlan({ q, steps, rows: rows.length, period, twoMonths: months.length >= 2 }, source);
+    // 비교 기간은 4번 엔진 결과를 따른다 (바로 앞 달이 없으면 previousPeriod 가 null)
+    const res = window.dashboard?.result?.();
+    const cur = res?.currentPeriod, prev = res?.previousPeriod;
+    const period = prev ? `${prev} → ${cur}` : cur ? `${cur} (비교할 바로 앞 달 없음)` : "기간 없음";
+    const show = (steps, source) => showPlan({ q, steps, rows: rows.length, period, twoMonths: !!prev }, source);
 
     if (!planProvider || typeof window.runRequest !== "function") return show(planFor(q), "rule");
 
@@ -123,7 +121,7 @@
           ${steps.map((s) => `<li><span class="plan-do">${esc(s.do)}</span><code>${esc(s.tool)}</code></li>`).join("")}
         </ol>
         <p class="plan-data">사용할 데이터: <b>${rows}행</b> · 비교 기간 <b>${esc(period)}</b></p>
-        ${pending.twoMonths ? "" : `<p class="plan-warn">전월 비교에는 최소 2개월 데이터가 필요합니다. 승인해도 비교 결과는 나오지 않습니다.</p>`}
+        ${pending.twoMonths ? "" : `<p class="plan-warn">전월 비교에는 바로 앞 달 데이터가 필요합니다(연속된 두 달). 승인해도 전월 대비 결과는 나오지 않습니다.</p>`}
         <div class="plan-actions">
           <button type="button" class="plan-approve">승인하고 분석</button>
           <button type="button" class="plan-cancel">취소</button>

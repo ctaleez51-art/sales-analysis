@@ -117,10 +117,14 @@ function render(rows, source) {
       : `<p>${esc(currentPeriod)} 쿠팡에서 경쟁 최저가가 더 낮은 제품이 없습니다.</p>`;
   } else diagEl.hidden = true;
 
-  // 한 줄 요약 — changes 값을 그대로 옮긴다
+  // 한 줄 요약 — changes 값을 그대로 옮긴다.
+  // 4번 엔진은 바로 앞 달(연속된 달)이 있을 때만 previousPeriod 를 준다 — 6월 · 9월만 올리면 비교하지 않는다
+  const months = Object.keys(monthly_kpis);
   $("insight").textContent = previousPeriod
     ? `${previousPeriod} → ${currentPeriod}: 광고비 ${signed(changes.ad_spend)}, 방문 ${signed(changes.visits)}에 비해 구매 ${signed(changes.purchases)}, 매출 ${signed(changes.revenue)}입니다.`
-    : `${currentPeriod} 한 달치만 있어 전월 비교를 할 수 없습니다. 두 달 이상의 파일을 함께 올려 주세요.`;
+    : months.length > 1
+      ? `${currentPeriod} 바로 앞 달 데이터가 없어 전월 비교를 할 수 없습니다(올린 달: ${months.join(", ")}). 연속된 달의 파일을 함께 올려 주세요.`
+      : `${currentPeriod} 한 달치만 있어 전월 비교를 할 수 없습니다. 두 달 이상의 파일을 함께 올려 주세요.`;
 
   $("answer").innerHTML = "";
   showErrors([]);
