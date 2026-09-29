@@ -37,10 +37,10 @@
   const DIAG = ["unit_price", "competitor_min_price"];
   // 필요한 열이 CSV에 없으면 그 단계는 계산 불가라고 계획에 미리 적는다
   function markGaps(steps) {
-    const missing = window.dashboard?.missing?.() ?? [];
+    const gaps = window.dashboard?.gaps?.() ?? {};
     return steps.map((s) => {
-      const lack = (s.needs || []).filter((c) => missing.includes(c));
-      return lack.length ? { ...s, do: `${s.do} — 이 CSV에 ${lack.join(", ")} 열이 없어 계산 불가로 넘김` } : s;
+      const why = (s.needs || []).map((c) => gaps[c]).filter(Boolean);
+      return why.length ? { ...s, do: `${s.do} — 계산 불가로 넘김 (근거: ${why.join(" · ")})` } : s;
     });
   }
 

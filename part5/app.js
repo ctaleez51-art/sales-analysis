@@ -65,14 +65,35 @@ const OPTIONAL = {
   refund: ["refund"],
 };
 const DIAG_COLS = ["unit_price", "competitor_min_price"]; // 쿠팡 경쟁가 진단(4번 diagnostics)
+const COL_LABEL = { add_to_cart: "장바구니", impressions: "광고 노출", clicks: "광고 클릭", units: "판매 수량", refund: "반품액", unit_price: "우리 판매가", competitor_min_price: "경쟁 최저가" };
 const filled = (v) => v != null && String(v).trim() !== "";
 
-// 한 행이라도 비어 있으면 합계가 틀리므로 "없음"으로 본다
-function missingColumns(rows) {
-  return [...Object.keys(OPTIONAL), ...DIAG_COLS].filter((c) => !rows.every((r) => filled(r[c])));
+// 한 행이라도 비어 있으면 합계가 틀리므로 "없음"으로 본다. 돌려주는 값: { 열: 판단 근거 }
+function columnGaps(rows) {
+  const gaps = {};
+  for (const c of [...Object.keys(OPTIONAL), ...DIAG_COLS]) {
+    const absent = rows.filter((r) => !(c in r)).length;
+    const blank = rows.filter((r) => c in r && !filled(r[c])).length;
+    const name = `${COL_LABEL[c]}(${c})`;
+    if (absent === rows.length) gaps[c] = `올린 CSV에 ${name} 열이 없음`;
+    else if (absent) gaps[c] = `일부 파일에 ${name} 열이 없음 (${absent.toLocaleString("ko-KR")}행)`;
+    else if (blank) gaps[c] = `${name} 칸이 ${blank.toLocaleString("ko-KR")}행 비어 있음`;
+  }
+  return gaps;
 }
 
-function maskResult(result, missing) {
+// null 인 값의 판단 근거 — 없는 열 때문인지, 나눌 값(분모)이 0이라서인지
+const DENOM = { roas: ["ad_spend", "광고비가"], cvr: ["visits", "방문이"], cpa: ["purchases", "구매가"], aov: ["purchases", "구매가"], cart_rate: ["visits", "방문이"], cart_to_purchase_rate: ["add_to_cart", "장바구니가"] };
+function whyNull(kpi, key, gaps) {
+  const col = Object.keys(OPTIONAL).find((c) => OPTIONAL[c].includes(key) && gaps[c]);
+  if (col) return gaps[col];
+  const d = DENOM[key];
+  if (d && kpi?.[d[0]] === 0) return `${d[1]} 0이라 나눌 수 없음`;
+  return "";
+}
+
+function maskResult(result, gaps) {
+  const missing = Object.keys(gaps);
   if (!missing.length) return result;
   const out = structuredClone(result);
   const fields = new Set(missing.flatMap((c) => OPTIONAL[c] || []));
@@ -84,13 +105,13 @@ function maskResult(result, missing) {
   const diagMissing = DIAG_COLS.filter((c) => missing.includes(c));
   if (diagMissing.length && out.diagnostics) {
     out.diagnostics = { ...out.diagnostics, coupang_undercut_product_count: null, coupang_undercut_products: null,
-      unavailable_reason: `${diagMissing.join(", ")} 열이 없거나 빈칸이 있어 경쟁가 진단을 할 수 없음` };
+      unavailable_reason: diagMissing.map((c) => gaps[c]).join(" · ") };
   }
-  out.data_gaps = { missing_columns: missing, note: "이 열로 만든 값은 null(계산 불가)이며 0이 아니다. 이 값으로 결론을 내리지 말 것." };
+  out.data_gaps = { missing_columns: missing, reasons: gaps, note: "이 열로 만든 값은 null(계산 불가)이며 0이 아니다. 이 값으로 결론을 내리지 말 것." };
   return out;
 }
 
-let state = null; // { rows, result, source, missing }
+let state = null; // { rows, result, source, gaps }
 let aiRequest = null; // 확인용으로 바꿔 끼울 수 있는 AI 요청 함수
 
 function showErrors(list) {
@@ -110,9 +131,9 @@ function bars(el, items) {
 }
 
 function render(rows, source) {
-  const missing = missingColumns(rows);
-  const result = maskResult(buildResult(rows), missing);
-  state = { rows, result, source, missing };
+  const gaps = columnGaps(rows);
+  const result = maskResult(buildResult(rows), gaps);
+  state = { rows, result, source, gaps };
   window.dispatchEvent(new CustomEvent("dashboard:data"));
   const { current, previous, changes, currentPeriod, previousPeriod, monthly_kpis, channel_kpis, diagnostics } = result;
   if (!current) {
@@ -124,7 +145,9 @@ function render(rows, source) {
   // KPI 6칸
   $("kpis").innerHTML = KPIS.map(({ key, label, fmt }) => {
     const v = changes[key] ?? null;
+    const why = current[key] == null ? whyNull(current, key, gaps) : "";
     return `<article><span>${esc(label)}</span><strong>${esc(fmt(current[key]))}</strong>
+      ${why ? `<small class="why">근거: ${esc(why)}</small>` : ""}
       <small class="${tone(key, v)}">${esc(signed(v))}${v == null ? "" : " 전월 대비"}</small></article>`;
   }).join("");
 
@@ -133,26 +156,29 @@ function render(rows, source) {
 
   // 없는 열 안내 — 해당 칸은 "계산 불가"
   const gapsEl = $("gaps");
-  gapsEl.hidden = !missing.length;
-  gapsEl.innerHTML = missing.length
-    ? `이 CSV에 없는(또는 빈칸이 있는) 열: <code>${missing.map(esc).join("</code> <code>")}</code> — 이 열로 만드는 칸은 0이 아니라 <b>계산 불가</b>로 표시하고, AI에도 계산 불가로 전달합니다.`
+  const gapList = Object.values(gaps);
+  gapsEl.hidden = !gapList.length;
+  gapsEl.innerHTML = gapList.length
+    ? `<b>일부 칸은 계산 불가로 표시합니다</b> — 0으로 계산하면 틀린 숫자가 되기 때문입니다. AI에도 계산 불가로 전달합니다.
+       <ul>${gapList.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>`
     : "";
 
   // 이번 달 퍼널 — 장바구니 열이 없으면 구매는 방문 대비(cvr)로 보여 준다
   const noCart = current.add_to_cart == null;
   const steps = [
     ["방문", current.visits, ""],
-    ["장바구니", current.add_to_cart, noCart ? "add_to_cart 열이 없음" : current.cart_rate == null ? "" : `방문의 ${rate(current.cart_rate)}`],
-    ["구매", current.purchases, noCart ? `방문의 ${rate(current.cvr)}` : current.cart_to_purchase_rate == null ? "" : `장바구니의 ${rate(current.cart_to_purchase_rate)}`],
+    ["장바구니", current.add_to_cart, noCart ? `근거: ${gaps.add_to_cart || "장바구니 값 없음"}` : current.cart_rate == null ? `근거: ${whyNull(current, "cart_rate", gaps)}` : `방문의 ${rate(current.cart_rate)}`],
+    ["구매", current.purchases, noCart ? `방문의 ${rate(current.cvr)}` : current.cart_to_purchase_rate == null ? `근거: ${whyNull(current, "cart_to_purchase_rate", gaps)}` : `장바구니의 ${rate(current.cart_to_purchase_rate)}`],
   ];
   $("funnel").innerHTML = steps.map(([name, n, note], i) =>
-    `<div class="funnel-step" style="width:${100 - i * 18}%"><b>${name}</b> ${count(n)}${note ? ` <small>${note}</small>` : ""}</div>`).join("");
+    `<div class="funnel-step" style="width:${100 - i * 18}%"><b>${name}</b> ${esc(count(n))}${note ? ` <small>${esc(note)}</small>` : ""}</div>`).join("");
 
   // 판매 채널별 (이번 달 ROAS, 전월 대비)
   bars($("channels"), Object.entries(channel_kpis).map(([ch, byMonth]) => {
     const now = byMonth[currentPeriod], before = previousPeriod ? byMonth[previousPeriod] : null;
     const v = before ? percentChange(now?.roas ?? null, before.roas) : null;
-    return { label: ch, value: now?.roas, text: times(now?.roas ?? null), sub: v == null ? "" : ` ${signed(v)}`, subTone: tone("roas", v) };
+    const why = now?.roas == null ? whyNull(now, "roas", gaps) : "";
+    return { label: ch, value: now?.roas, text: times(now?.roas ?? null), sub: why ? ` 근거: ${why}` : v == null ? "" : ` ${signed(v)}`, subTone: why ? "" : tone("roas", v) };
   }));
 
   // 경쟁가 진단 (4번 diagnostics)
@@ -160,7 +186,9 @@ function render(rows, source) {
   if (diagnostics && diagnostics.coupang_undercut_products === null) {
     diagEl.hidden = false;
     diagEl.querySelector(".diag-body").innerHTML =
-      `<p><b>진단 불가</b> — ${esc(diagnostics.unavailable_reason || "경쟁가 열이 없습니다")}. 경쟁가가 더 낮은 제품이 없다는 뜻이 아닙니다.</p>`;
+      `<p><b>진단 불가</b> — 경쟁가가 더 낮은 제품이 없다는 뜻이 아닙니다.</p>
+       <p class="diag-note">근거: ${esc(diagnostics.unavailable_reason || "경쟁가 열이 없음")}
+       <span class="diag-rule">진단 기준: ${esc(diagnostics.evidence_rule || "")} — 우리 판매가와 경쟁 최저가가 모든 행에 있어야 셀 수 있습니다.</span></p>`;
   } else if (diagnostics && Array.isArray(diagnostics.coupang_undercut_products)) {
     const list = diagnostics.coupang_undercut_products;
     diagEl.hidden = false;
@@ -180,11 +208,9 @@ function render(rows, source) {
       ? `${currentPeriod} 바로 앞 달 데이터가 없어 전월 비교를 할 수 없습니다(올린 달: ${months.join(", ")}). 연속된 달의 파일을 함께 올려 주세요.`
       : `${currentPeriod} 한 달치만 있어 전월 비교를 할 수 없습니다. 두 달 이상의 파일을 함께 올려 주세요.`;
 
-  // 필요한 열이 없는 질문 버튼은 흐리게 (data-needs)
+  // 필요한 열이 없는 질문 버튼은 숨긴다 (data-needs). 열이 다 있는 파일을 올리면 다시 보인다
   document.querySelectorAll(".faq-btn[data-needs]").forEach((b) => {
-    const lack = b.dataset.needs.split(" ").filter((c) => missing.includes(c));
-    b.disabled = lack.length > 0;
-    b.title = lack.length ? `이 CSV에 ${lack.join(", ")} 열이 없어 답할 수 없습니다` : "";
+    b.hidden = b.dataset.needs.split(" ").some((c) => gaps[c]);
   });
 
   $("answer").innerHTML = "";
@@ -231,7 +257,7 @@ $("file").addEventListener("change", async (e) => {
 window.dashboard = {
   rows: () => state?.rows ?? null,
   result: () => state?.result ?? null,
-  missing: () => state?.missing ?? [],
+  gaps: () => state?.gaps ?? {},
   // 승인했을 때만 불린다. 돌려주는 값: { ok, kind }
   analyze(question) {
     if (!state) return Promise.resolve({ ok: false, kind: "no-data" });

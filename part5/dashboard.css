@@ -42,7 +42,8 @@ body:has(> .auth-account:not([hidden])) .wrap { padding-top: 84px; }
   body:has(> .auth-account:not([hidden])) .wrap { padding-top: 106px; }
 }
 
-/* 없는 열 안내 · 흐린 질문 버튼 */
+/* 없는 열 안내 · 계산 불가 근거 */
 .gaps { margin: 0 0 14px; font-size: 14px; color: #93370d; background: #fffaeb; border: 1px solid #fedf89; border-radius: 10px; padding: 10px 14px; line-height: 1.6; }
-.gaps code { font-size: 12px; background: #fff; border: 1px solid #fedf89; border-radius: 4px; padding: 1px 5px; }
-.faq-btn:disabled { opacity: .45; cursor: not-allowed; }
+.gaps ul { margin: 4px 0 0; padding-left: 18px; }
+.kpis .why { display: block; font-size: 12px; color: #b54708; margin: 2px 0; overflow-wrap: anywhere; }
+.faq-btn[hidden] { display: none; }
