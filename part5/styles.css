@@ -16,10 +16,14 @@ button:focus-visible,.question input:focus-visible{outline:3px solid rgba(84,104
 
 /* 숫자 자리 맞춤 */
 .kpis strong,.barrow span,.funnel-step{font-variant-numeric:tabular-nums}
-.kpis strong{overflow-wrap:anywhere}
+.kpis strong{overflow-wrap:anywhere;font-size:clamp(18px,2.5vw,28px)}
 .kpis small{font-weight:600}
 .kpis small.negative{color:#b42318}
 .kpis small.positive{color:#027a48}
+/* KPI 5~6칸 대비 — 4번 결과는 매출·광고비·ROAS·CVR·CPA·AOV 6개. 4칸 틀이면 4+2로 비어 보여서 3칸씩 두 줄로 */
+.kpis{row-gap:0} /* 카드마다 margin-top 14px 이 있어 gap 까지 더하면 줄 사이가 칸 사이의 두 배가 된다 */
+.kpis:has(>article:nth-child(5)){grid-template-columns:repeat(3,1fr)}
+@media(max-width:720px){.kpis:has(>article:nth-child(5)){grid-template-columns:1fr 1fr}}
 
 /* 패널 제목 */
 .panel h2,.insight h2{font-size:18px;margin:0 0 14px;padding-left:10px;border-left:3px solid var(--accent)}
@@ -36,4 +40,4 @@ button:focus-visible,.question input:focus-visible{outline:3px solid rgba(84,104
 #answer p b{color:var(--accent)}
 
 /* 좁은 화면 */
-@media(max-width:520px){.wrap{padding:24px 16px 56px}header h1{font-size:28px}.kpis{gap:10px}.kpis strong{font-size:22px}.barrow{grid-template-columns:64px 1fr auto}.question input{min-width:0}}
+@media(max-width:520px){.wrap{padding:24px 16px 56px}header h1{font-size:28px}.kpis{column-gap:10px}.kpis article{padding:16px 14px;margin-top:10px}.kpis strong{font-size:clamp(15px,4.8vw,22px)}.barrow{grid-template-columns:90px 1fr auto}.question input{min-width:0}}
