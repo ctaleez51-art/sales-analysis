@@ -11,7 +11,14 @@ const rows = await loadPart3CSV("../data");
 const result = buildResult(rows);
 ```
 
-## 2. OpenAI 서버
+## 2. 팀 Supabase로 통일
+최종 앱은 로그인/결제와 동일한 Supabase 프로젝트를 사용합니다.
+
+`https://joxyzphsqjwuyobkboqe.supabase.co`
+
+테스트용 `hpuwvtekmzujixvzgdeo` 주소는 최종 통합에서 사용하지 않습니다.
+
+## 3. OpenAI 서버
 Supabase Edge Function 소스:
 `part4/supabase/functions/analyze-shop/index.ts`
 
@@ -25,7 +32,7 @@ API 키 값은 GitHub에 커밋하지 않습니다.
 
 Edge Function은 계산 완료된 `result`를 POST로 받아 OpenAI Responses API에 전달하고 `{ "analysis": "..." }`를 반환합니다.
 
-## 3. 5번에 전달
+## 4. 5번에 전달
 대시보드는 `buildResult(rows)` 결과의 다음 필드를 사용합니다.
 
 - `monthly_kpis`
