@@ -67,8 +67,9 @@
 ## 7. CSV 형식
 출처: 3번 `docs/part3_csv_input.md`
 
-- 필수 열 7개: `date`(YYYY-MM-DD), `product`, `channel`, `ad_spend`, `visits`, `purchases`, `revenue`
-- 선택 열: `period_end`, `days`, `category`, `unit_price`, `discount_rate`, `competitor_min_price`, `impressions`, `clicks`, `add_to_cart`, `units`, `refund`, `holidays`, `stockout_days`
+- 필수 열 14개: `date`(YYYY-MM-DD), `product`, `channel`, `unit_price`, `competitor_min_price`, `impressions`, `clicks`, `visits`, `add_to_cart`, `purchases`, `units`, `revenue`, `ad_spend`, `refund`
+  - 4번 지표 계산이 읽는 열 전부입니다. 3번 정답표(`data/answer_key.json`)가 이 열로 만든 CTR · 장바구니율 · 경쟁가 진단까지 검증하므로 모두 필수로 둡니다. (7열만 필수일 때는 선택 열이 0으로 계산돼 정답 191개 중 91개가 어긋남)
+- 선택 열: `period_end`, `days`, `category`, `discount_rate`, `holidays`, `stockout_days` (계산에 쓰지 않음. `holidays` · `stockout_days` · `discount_rate`는 3번 시나리오의 함정 변수)
 - 한 행 = 1주 구간 × 판매 채널 × 제품
 - 금액은 원 단위
 - 월별 파일 여러 개를 한 번에 올립니다. 전월 대비는 두 달 이상 있어야 나옵니다.

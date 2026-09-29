@@ -34,7 +34,7 @@
 ### 3.1 CSV 입력단 → 지표 계산
 출처: 3번 `docs/part3_to_part4_metric_spec.md`
 - 넘겨주는 데이터 형식: 행 객체 배열 `rows`. 키는 CSV 열 이름입니다. 여러 달의 파일을 합친 배열입니다.
-- 필수 키 7개: `date`, `product`, `channel`, `ad_spend`, `visits`, `purchases`, `revenue` (선택 키는 PRD §7)
+- 필수 키 14개: `date`, `product`, `channel`, `unit_price`, `competitor_min_price`, `impressions`, `clicks`, `visits`, `add_to_cart`, `purchases`, `units`, `revenue`, `ad_spend`, `refund` (선택 키는 PRD §7)
 - 월은 `date`의 앞 7글자(`2026-09`)로 나눕니다.
 
 ### 3.2 지표 계산 → 대시보드
