@@ -80,6 +80,7 @@
     if (!q) return;
     window.cancelRequest?.(planEl);
     window.cancelRequest?.(answerEl);
+    lastRun = null;
     answerEl.innerHTML = "";
     logEl.hidden = true;
 
@@ -132,33 +133,43 @@
   }
 
   const AI_TOOL = "AI 서버 analyze-shop";
-  const KIND = { ok: "완료", cancelled: "중단", timeout: "시간 초과", network: "연결 실패", rate: "요청 몰림", auth: "서버 설정 문제", server: "서버 오류", app: "처리 실패", format: "형식 오류", "no-data": "데이터 없음" };
+  const KIND = { ok: "완료", cancelled: "중단", timeout: "시간 초과", network: "연결 실패", rate: "요청 몰림", auth: "서버 설정 문제", server: "서버 오류", app: "처리 실패", format: "형식 오류", "no-data": "데이터 없음", quota: "오늘 한도 초과", "quota-check": "한도 확인 실패" };
 
-  function writeLog(p, at, aiState) {
-    const cell = (s) => (s.tool === AI_TOOL ? aiState : { text: "완료", cls: "st-done" });
+  function writeLog(p, at, ai, tries) {
+    const cell = (s) => (s.tool === AI_TOOL ? ai : { text: "완료", cls: "st-done" });
     logEl.innerHTML = `
-      <summary>실행 기록 · ${p.steps.length}단계 · AI ${esc(aiState.text)}</summary>
+      <summary>실행 기록 · ${p.steps.length}단계 · AI ${esc(ai.text)}${tries > 1 ? ` (${tries}번째 시도)` : ""}</summary>
       <table>
         <thead><tr><th>단계</th><th>할 일</th><th>도구</th><th>상태</th><th>입력</th></tr></thead>
         <tbody>
           ${p.steps.map((s, i) => { const c = cell(s); return `<tr><td>${i + 1}</td><td>${esc(s.do)}</td><td><code>${esc(s.tool)}</code></td><td class="${c.cls}">${esc(c.text)}</td><td>${p.rows}행</td></tr>`; }).join("")}
         </tbody>
       </table>
-      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 4번 계산 엔진이 불러올 때 이미 계산했고, AI 에는 그 결과만 보냅니다. [다시 시도]의 결과는 위 답변 칸에 나옵니다.</p>`;
+      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 4번 계산 엔진이 불러올 때 이미 계산했고, AI 에는 그 결과만 보냅니다. AI 상태는 [다시 시도]를 포함한 마지막 시도 결과입니다.</p>`;
     logEl.hidden = false;
   }
+
+  let lastRun = null; // 기록 중인 승인 { p, at, tries }
+  const aiState = (r) => (r.ok ? { text: "완료", cls: "st-done" } : { text: KIND[r.kind] || "실패", cls: "st-fail" });
+
+  // AI 요청이 끝날 때마다(다시 시도 포함) 마지막 결과로 기록을 고친다
+  answerEl.addEventListener("sc:done", (e) => {
+    if (!lastRun) return;
+    lastRun.tries++;
+    writeLog(lastRun.p, lastRun.at, aiState(e.detail), lastRun.tries);
+  });
 
   async function approve() {
     if (!pending) return;
     const p = pending;
     pending = null;
     const at = new Date();
+    lastRun = { p, at, tries: 0 };
     planEl.innerHTML = `<div class="plan-card plan-done">✓ 계획 승인됨 · ${at.toLocaleTimeString("ko-KR")} · ${esc(p.q)}</div>`;
-    writeLog(p, at, { text: "진행 중", cls: "" });
+    writeLog(p, at, { text: "진행 중", cls: "" }, 0);
     // 여기서만 AI 를 부른다 (승인 전에는 0회)
     const r = window.dashboard?.analyze ? await window.dashboard.analyze(p.q) : { ok: false, kind: "no-data" };
-    if (r.kind === "replaced") return; // 더 새 질문이 자리를 가져갔다
-    writeLog(p, at, r.ok ? { text: "완료", cls: "st-done" } : { text: KIND[r.kind] || "실패", cls: "st-fail" });
+    if (r.kind === "no-data") writeLog(p, at, aiState(r), 0); // status-card 를 거치지 않은 실패
   }
 
 
@@ -172,6 +183,7 @@
   function reset() {
     window.cancelRequest?.(planEl);
     window.cancelRequest?.(answerEl);
+    lastRun = null;
     pending = null;
     planEl.innerHTML = "";
     logEl.hidden = true;

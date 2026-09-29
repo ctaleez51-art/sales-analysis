@@ -160,7 +160,18 @@ window.dashboard = {
   analyze(question) {
     if (!state) return Promise.resolve({ ok: false, kind: "no-data" });
     const body = { result: state.result, question };
-    const request = aiRequest ? (signal) => aiRequest(body, signal) : window.postJSON(AI_URL, body);
+    const send = aiRequest ? (signal) => aiRequest(body, signal) : window.postJSON(AI_URL, body);
+    // 2번 로그인이 붙어 있으면 AI 를 부르기 직전에 하루 한도를 1회 쓴다 ([다시 시도]도 매번 확인).
+    // 화면 쪽 확인은 1차 방어다 — 서버에서 한도를 확인하는 것은 TECH_SPEC T-08.
+    const request = async (signal) => {
+      if (typeof window.Auth?.consumeQuota === "function") {
+        let allowed;
+        try { allowed = await window.Auth.consumeQuota(); }
+        catch (e) { console.warn("[dashboard] 한도 확인 실패", e); throw Object.assign(new Error("quota-check"), { kind: "quota-check" }); }
+        if (!allowed) throw Object.assign(new Error("quota"), { kind: "quota" });
+      }
+      return send(signal);
+    };
     return window.runAnalysis(request, { target: $("answer") });
   },
   // 확인용: 실제 서버 대신 가짜 응답을 넣는다. null 이면 실제 서버

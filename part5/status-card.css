@@ -73,3 +73,7 @@
   .sc { padding: 14px; }
   .sc-row .sc-cancel { margin-left: 0; }
 }
+
+/* 하루 한도 — 오류가 아니라 제한이라 주황 */
+.sc-quota { border-color: #fedf89; border-top-color: #dc6803; }
+.sc-quota .sc-title { color: #b54708; }

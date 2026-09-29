@@ -27,6 +27,9 @@
     app:       { title: "요청을 처리하지 못했습니다", body: (o) => o.message || "서버가 요청을 처리하지 못했습니다." },
     format:    { title: "응답 형식 오류", body: () => "AI 서버의 답을 읽을 수 없습니다. 다시 시도해 주세요." },
     cancelled: { title: "중단했습니다", body: () => "요청을 멈췄습니다. 질문을 바꾸거나 다시 시도해 주세요." },
+    // 2번 로그인(Auth.consumeQuota)이 붙었을 때
+    quota:     { title: "오늘 AI 분석 횟수를 다 썼습니다", body: () => "오늘 쓸 수 있는 AI 분석 횟수를 모두 썼습니다. 내일 다시 이용하거나 요금제를 올려 주세요.", noRetry: true },
+    "quota-check": { title: "사용 한도를 확인하지 못했습니다", body: () => "로그인 서버에 연결하지 못해 AI 분석을 시작하지 않았습니다. 잠시 뒤 다시 시도해 주세요." },
   };
 
   const runs = new Map();    // 자리 → 진행 중인 요청
@@ -70,6 +73,7 @@
   function renderFailure(target, kind, { detail = {}, onRetry, extra = [] } = {}) {
     stopTicker(target);
     const f = FAIL[kind] || FAIL.server;
+    if (f.noRetry) onRetry = null; // 다시 눌러도 결과가 같은 실패
     const buttons = [
       onRetry ? `<button type="button" class="sc-btn sc-retry">다시 시도</button>` : "",
       ...extra.map((b, i) => `<button type="button" class="sc-btn sc-btn-ghost sc-extra" data-i="${i}">${esc(b.label)}</button>`),
@@ -113,7 +117,14 @@
     stopTicker(target);
   }
 
+  // 끝날 때마다(다시 시도 포함) 자리에 "sc:done" 이벤트를 보낸다 — 실행 기록이 마지막 결과를 따라가게
   async function runRequest(target, requestFn, opts = {}) {
+    const r = await runOnce(target, requestFn, opts);
+    if (target && r.kind !== "replaced") target.dispatchEvent(new CustomEvent("sc:done", { detail: r }));
+    return r;
+  }
+
+  async function runOnce(target, requestFn, opts) {
     if (!target) return { ok: false, kind: "no-target" };
     cancelRequest(target);
     const ctrl = new AbortController();
