@@ -29,7 +29,15 @@
 .diag-note { font-size: 13px; color: #a15c00; background: #fffaf0; border: 1px dashed #f2c46d; border-radius: 8px; padding: 6px 10px; }
 .diag-rule { display: block; color: var(--muted, #667085); font-family: ui-monospace, monospace; font-size: 12px; margin-top: 2px; }
 
+/* 2번 로그인(part2/auth.css)의 계정 상자는 position: fixed 라 스크롤을 따라와 대시보드 카드를 가린다.
+   대시보드에서만 페이지 맨 위에 두고(스크롤하면 같이 올라감) 그만큼 위 여백을 비운다. 2번 파일은 고치지 않는다. */
+body > .auth-account { position: absolute; }
+body:has(> .auth-account:not([hidden])) .wrap { padding-top: 84px; }
+
 @media (max-width: 520px) {
   #channels .barrow { grid-template-columns: 90px 1fr auto; }
   #channels .barrow small { display: block; margin-left: 0; text-align: right; }
+  /* 2번은 좁은 화면에서 static 으로 두는데, 상자가 body 맨 끝에 붙어 페이지 맨 아래로 간다 → 맨 위로 */
+  body > .auth-account { position: absolute; top: 12px; left: 16px; right: 16px; margin: 0; justify-content: flex-start; }
+  body:has(> .auth-account:not([hidden])) .wrap { padding-top: 106px; }
 }
