@@ -1,3 +1,5 @@
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -8,6 +10,38 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "로그인이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const supa = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supa.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "로그인이 필요합니다." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    const { data: allowed, error: quotaError } = await supa.rpc("consume_analysis_quota");
+    if (quotaError) {
+      return new Response(JSON.stringify({ error: "사용 한도 확인에 실패했습니다." }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "오늘의 무료 분석 5회를 모두 사용했습니다." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     const body = await req.json();
     const result = body.result;
     const question = body.question || "핵심 문제와 다음 액션을 분석해줘.";
@@ -30,29 +64,21 @@ Deno.serve(async (req) => {
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
-      headers: {
-        "Authorization": "Bearer " + apiKey,
-        "Content-Type": "application/json"
-      },
+      headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "gpt-5.6", input })
     });
-
     const data = await response.json();
     if (!response.ok) throw new Error("OpenAI request failed.");
 
     const analysis = data.output_text ??
-      data.output?.flatMap((x) => x.content ?? [])
-        .find((x) => x.type === "output_text")?.text ?? "";
+      data.output?.flatMap((x) => x.content ?? []).find((x) => x.type === "output_text")?.text ?? "";
 
     return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : String(error)
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
