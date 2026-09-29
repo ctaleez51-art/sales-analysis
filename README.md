@@ -8,7 +8,7 @@ CSV 매출 데이터를 올리면 지표를 계산하고, AI가 결과를 분석
 |---|---|---|---|
 | 1 | 프로젝트매니저 (PRD, 저장소 관리) | (이름) | `main` 관리 |
 | 2 | 로그인 + 결제창 (DB, 토스페이먼츠) | (이름) | `feature/login-payment` |
-| 3 | CSV 입력단 (더미 데이터, 정답 시나리오, OpenAI 연결) | (이름) | `feature/csv-input` |
+| 3 | CSV 입력단 (더미 데이터, 정답 시나리오) | (이름) | `feature/csv-input` |
 | 4 | 결과 출력단 (지표 계산식, 결과분석, OpenAI 연결) | (이름) | `feature/result` |
 | 5 | 대시보드 + CSS | (이름) | `feature/dashboard` |
 
