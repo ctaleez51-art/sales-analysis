@@ -79,8 +79,9 @@
 
 ### 3.4 대시보드 → AI 분석
 출처: 4번 `part4/AI_SERVER.md`, 5번 `part5/app.js`
-- 요청: `POST …/functions/v1/analyze-shop` 본문 `{ result: buildResult 결과, question: 사용자 질문 }`
-- 응답: `{ analysis }` — 모범 답 구조는 `summary · facts · hypotheses · actions · limitations` (3번 `docs/part3_answer_scenario.md` §10)
+- 요청: `POST https://joxyzphsqjwuyobkboqe.supabase.co/functions/v1/analyze-shop` (팀 Supabase 프로젝트) · 헤더 `Authorization: Bearer <로그인 access token>`(서버 verify_jwt=true) · 본문 `{ result: buildResult 결과, question: 사용자 질문 }`
+- 서버 코드: `part4/supabase/functions/analyze-shop/index.ts` (4번 PR #2). 실패는 모두 400 + `{ error }`, 토큰이 없거나 틀리면 401
+- 응답: `{ analysis }` — 현재 서버는 **글(문자열)**로 답함(형식 지시 없음). 모범 답 구조는 `summary · facts · hypotheses · actions · limitations` (3번 `docs/part3_answer_scenario.md` §10). 대시보드는 JSON 이면 카드, 글이면 제목 · 목록을 살려 보여 줌
 - 대시보드는 **계획 승인 뒤에만** 요청하고, 20초가 넘거나 실패하면 가짜 결과 없이 실패 안내
 
 ## 4. 데이터 모델
@@ -100,7 +101,7 @@
 ## 5. API
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/functions/v1/analyze-shop` | 계산 결과 + 질문 → AI 해석 (4번) |
+| POST | `/functions/v1/analyze-shop` | 계산 결과 + 질문 → AI 해석, 로그인 토큰 필요 (4번) |
 | POST | Supabase Auth (`supabase-js` `signUp` · `signInWithPassword` · `signOut`) | 회원가입 · 로그인 · 로그아웃 (2번) |
 | POST | `/rest/v1/rpc/consume_analysis_quota` (`Auth.consumeQuota()`) | 분석 직전 하루 한도 1회 차감 (2번) |
 | (  ) | (  ) | 결제 승인 (2번, 예정) |
@@ -147,6 +148,6 @@ part5/                대시보드 index.html · app.js · csv.js · 화면 부�
 | T-04 | DB 테이블 (§4) | 2번 schema.sql 반영 |
 | T-05 | 배포 방법 | GitHub Pages — 저장소 주인 설정 필요(2번 PR #4 에 방법 있음), 체험 주소는 `…/part5/` |
 | T-06 | 테스트 방법 | §8 반영, "합친 뒤" 칸은 병합 후 |
-| T-07 | Supabase 프로젝트 통일 | 2번(로그인 · DB)과 4번(AI 서버)이 서로 다른 프로젝트. 하나로 정해야 AI 서버에서 로그인 · 한도 확인 가능 |
-| T-08 | AI 서버의 로그인 · 사용 한도 확인 | 한도 함수는 DB 에 있고(2번), AI 서버에서 부르는 부분은 아직 없음 (STEP_CHECKLIST Step 5) |
+| T-07 | Supabase 프로젝트 통일 | **정리됨(9/29 밤)** — AI 서버를 팀 프로젝트(`joxyzphsqjwuyobkboqe`)로, 테스트 프로젝트는 쓰지 않음 (4번 PR #2 `part4/RUN.md`). 5번 화면도 같은 주소로 (PR #3) |
+| T-08 | AI 서버의 로그인 · 사용 한도 확인 | 로그인: 서버 verify_jwt=true 로 확인됨(4번). 한도: 화면에서 `Auth.consumeQuota()` 먼저 확인(5번), 서버에서 부르는 부분은 아직 (STEP_CHECKLIST Step 5) |
 | T-09 | CSV 읽기 담당 | 3번 명세는 4번, 현재 구현은 5번 `part5/csv.js`. 누가 맡을지 확인 |
