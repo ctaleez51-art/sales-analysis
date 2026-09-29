@@ -13,6 +13,12 @@ import { readFiles, readTable } from "./csv.js";
 const AI_URL = "https://joxyzphsqjwuyobkboqe.supabase.co/functions/v1/analyze-shop";
 
 // 로그인 토큰 — 4번 RUN.md 의 약속(getAccessToken · supabaseClient)과 2번 window.Auth.client 를 차례로 찾는다
+// 2번 계정 상자는 consumeQuota·refreshAccount 때만 다시 그린다. 한도는 4번 서버가 세므로 화면이 알려 줘야 한다.
+function refreshAccount() {
+  try { window.Auth?.refreshAccount?.()?.catch?.((e) => console.warn("[dashboard] 계정 표시 갱신 실패", e)); }
+  catch (e) { console.warn("[dashboard] 계정 표시 갱신 실패", e); }
+}
+
 async function accessToken() {
   if (typeof window.getAccessToken === "function") return (await window.getAccessToken()) || null;
   const client = window.Auth?.client || window.supabaseClient;
@@ -183,9 +189,11 @@ window.dashboard = {
       catch (e) { console.warn("[dashboard] 로그인 확인 실패", e); throw fail("login"); }
       if (!token) throw fail("login"); // 토큰 없이 부르면 서버가 401
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
-      return aiRequest
+      const res = await (aiRequest
         ? aiRequest(body, signal, headers)
-        : fetch(AI_URL, { method: "POST", headers, body: JSON.stringify(body), signal });
+        : fetch(AI_URL, { method: "POST", headers, body: JSON.stringify(body), signal }));
+      refreshAccount(); // 응답이 왔으면 서버가 한도를 셌다 — 2번 계정 상자의 "오늘 N회"를 다시 그린다
+      return res;
     };
     return window.runAnalysis(request, { target: $("answer") });
   },
