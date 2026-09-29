@@ -12,8 +12,9 @@
  * 자동 재시도는 없다. 서버 오류 원문은 화면에 쓰지 않고 console.warn 으로만 남긴다.
  */
 (() => {
-  const SLOW_MS = 5000;     // 이만큼 지나면 "평소보다 오래 걸립니다"
-  const TIMEOUT_MS = 20000; // 이만큼 지나면 자동 중단
+  // 4번 AI 서버 응답은 7~27초(DevelopDoc/ANALYSIS_SUBMISSION.md §6) — 여유를 두고 60초까지 기다린다
+  const SLOW_MS = 10000;    // 이만큼 지나면 "평소보다 오래 걸립니다"
+  const TIMEOUT_MS = 60000; // 이만큼 지나면 자동 중단
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const TRUST = "계산 결과(위 KPI · 차트)는 코드가 계산한 값이라 그대로 믿어도 됩니다.";
