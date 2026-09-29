@@ -21,16 +21,14 @@
   const FAIL = {
     timeout:   { title: "응답이 너무 오래 걸려 멈췄습니다", body: (o) => `${Math.round(o.timeoutMs / 1000)}초 안에 답이 오지 않아 요청을 멈췄습니다. 잠시 뒤 다시 시도해 주세요.` },
     network:   { title: "서버에 연결하지 못했습니다", body: () => "인터넷 연결을 확인하거나 잠시 뒤 다시 시도해 주세요." },
-    rate:      { title: "요청이 몰렸습니다", body: () => "AI 사용량 한도에 걸렸습니다. 1분쯤 뒤 다시 시도해 주세요." },
     auth:      { title: "로그인을 다시 확인해 주세요", body: () => "AI 서버가 요청을 거절했습니다(로그인 만료 또는 권한 없음). 다시 로그인한 뒤 시도해 주세요." },
     login:     { title: "로그인이 필요합니다", body: () => "AI 분석은 로그인한 사용자만 쓸 수 있습니다. 로그인한 뒤 다시 시도해 주세요. (지표와 차트는 로그인 없이도 볼 수 있습니다)" },
     server:    { title: "AI 서버 오류", body: (o) => `AI 서버에서 오류가 났습니다${o.code ? ` (코드 ${o.code})` : ""}. 잠시 뒤 다시 시도해 주세요.` },
     app:       { title: "요청을 처리하지 못했습니다", body: (o) => o.message || "서버가 요청을 처리하지 못했습니다." },
     format:    { title: "응답 형식 오류", body: () => "AI 서버의 답을 읽을 수 없습니다. 다시 시도해 주세요." },
     cancelled: { title: "중단했습니다", body: () => "요청을 멈췄습니다. 질문을 바꾸거나 다시 시도해 주세요." },
-    // 2번 로그인(Auth.consumeQuota)이 붙었을 때
+    // 서버 429 — 하루 한도는 4번 AI 서버가 센다
     quota:     { title: "오늘 AI 분석 횟수를 다 썼습니다", body: () => "오늘 쓸 수 있는 AI 분석 횟수를 모두 썼습니다. 내일 다시 이용하거나 요금제를 올려 주세요.", noRetry: true },
-    "quota-check": { title: "사용 한도를 확인하지 못했습니다", body: () => "로그인 서버에 연결하지 못해 AI 분석을 시작하지 않았습니다. 잠시 뒤 다시 시도해 주세요." },
   };
 
   const runs = new Map();    // 자리 → 진행 중인 요청
@@ -99,7 +97,8 @@
     try { data = text ? JSON.parse(text) : null; } catch { /* 아래에서 처리 */ }
     if (!res.ok) {
       console.warn("[status-card] 서버 오류", res.status, data ?? text.slice(0, 300));
-      const kind = res.status === 429 ? "rate" : res.status === 401 || res.status === 403 ? "auth" : "server";
+      // 429 = 4번 서버의 "오늘 무료 분석 횟수를 다 씀" (consume_analysis_quota)
+      const kind = res.status === 429 ? "quota" : res.status === 401 || res.status === 403 ? "auth" : "server";
       throw fail(kind, { code: res.status });
     }
     if (data === null) throw fail("format");

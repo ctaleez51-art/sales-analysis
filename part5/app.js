@@ -171,20 +171,14 @@ window.dashboard = {
     if (!state) return Promise.resolve({ ok: false, kind: "no-data" });
     const body = { result: state.result, question };
     const fail = (kind) => Object.assign(new Error(kind), { kind });
-    // 순서: 로그인 토큰 → 하루 한도 → AI 서버. [다시 시도]도 매번 이 순서로 확인한다.
-    // 화면 쪽 한도 확인은 1차 방어다 — 서버에서 한도를 확인하는 것은 TECH_SPEC T-08.
+    // 하루 한도는 4번 AI 서버가 센다(consume_analysis_quota, 넘으면 429). 화면에서 또 세면 한 번에 2회가 줄어든다.
+    // 화면은 로그인 토큰만 확인한다. [다시 시도]도 매번 토큰부터 다시 찾는다.
     const request = async (signal) => {
       let token;
       try { token = await accessToken(); }
       catch (e) { console.warn("[dashboard] 로그인 확인 실패", e); throw fail("login"); }
-      if (!token) throw fail("login"); // 토큰 없이 부르면 서버가 401 — 한도도 쓰지 않는다
+      if (!token) throw fail("login"); // 토큰 없이 부르면 서버가 401
       const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
-      if (typeof window.Auth?.consumeQuota === "function") {
-        let allowed;
-        try { allowed = await window.Auth.consumeQuota(); }
-        catch (e) { console.warn("[dashboard] 한도 확인 실패", e); throw fail("quota-check"); }
-        if (!allowed) throw fail("quota");
-      }
       return aiRequest
         ? aiRequest(body, signal, headers)
         : fetch(AI_URL, { method: "POST", headers, body: JSON.stringify(body), signal });

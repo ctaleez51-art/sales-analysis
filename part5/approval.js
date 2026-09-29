@@ -133,7 +133,7 @@
   }
 
   const AI_TOOL = "AI 서버 analyze-shop";
-  const KIND = { ok: "완료", cancelled: "중단", timeout: "시간 초과", network: "연결 실패", rate: "요청 몰림", auth: "서버 설정 문제", server: "서버 오류", app: "처리 실패", format: "형식 오류", "no-data": "데이터 없음", quota: "오늘 한도 초과", "quota-check": "한도 확인 실패", login: "로그인 필요" };
+  const KIND = { ok: "완료", cancelled: "중단", timeout: "시간 초과", network: "연결 실패", auth: "로그인 확인 필요", server: "서버 오류", app: "처리 실패", format: "형식 오류", "no-data": "데이터 없음", quota: "오늘 한도 초과", login: "로그인 필요" };
 
   function writeLog(p, at, ai, tries) {
     const cell = (s) => (s.tool === AI_TOOL ? ai : { text: "완료", cls: "st-done" });

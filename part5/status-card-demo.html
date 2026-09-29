@@ -49,7 +49,7 @@ const GROUPS = {
     "시간 초과 (3초로 줄임)": { fn: () => new Promise(() => {}), opts: { timeoutMs: 3000 } },
     "시간 초과 (20초 그대로)": { fn: () => new Promise(() => {}) },
     "연결 실패": { fn: (signal) => fetch("http://127.0.0.1:9/", { signal }) },
-    "429 요청 몰림": { fn: wait(800, res(429, { error: "Rate limit" })) },
+    "429 오늘 한도 초과": { fn: wait(800, res(429, { error: "오늘의 무료 분석 5회를 모두 사용했습니다." })) },
     "401 키 문제": { fn: wait(800, res(401, { error: "Invalid API key sk-테스트" })) },
     "500 서버 오류": { fn: wait(800, res(500, { detail: { error: { message: "internal" } } })) },
     "ok:false (3번 오류 모양)": { fn: wait(800, res(200, { ok: false, error_type: "empty_file", message: "빈 파일입니다. 데이터가 있는 CSV를 올려 주세요." })) },
