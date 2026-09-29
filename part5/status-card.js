@@ -24,7 +24,8 @@
     network:   { title: "서버에 연결하지 못했습니다", body: () => "인터넷 연결을 확인하거나 잠시 뒤 다시 시도해 주세요." },
     auth:      { title: "로그인을 다시 확인해 주세요", body: () => "AI 서버가 요청을 거절했습니다(로그인 만료 또는 권한 없음). 다시 로그인한 뒤 시도해 주세요." },
     login:     { title: "로그인이 필요합니다", body: () => "AI 분석은 로그인한 사용자만 쓸 수 있습니다. 로그인한 뒤 다시 시도해 주세요. (지표와 차트는 로그인 없이도 볼 수 있습니다)" },
-    server:    { title: "AI 서버 오류", body: (o) => `AI 서버에서 오류가 났습니다${o.code ? ` (코드 ${o.code})` : ""}. 잠시 뒤 다시 시도해 주세요.` },
+    // 4번 서버는 한도를 먼저 센 뒤 OpenAI 를 부른다 — 실패해도 1회가 줄어 있다
+    server:    { title: "AI 서버 오류", body: (o) => `AI 서버에서 오류가 났습니다${o.code ? ` (코드 ${o.code})` : ""}. 잠시 뒤 다시 시도해 주세요.`, note: "다시 시도하면 오늘 AI 분석 횟수가 1회 더 줄어듭니다." },
     app:       { title: "요청을 처리하지 못했습니다", body: (o) => o.message || "서버가 요청을 처리하지 못했습니다." },
     format:    { title: "응답 형식 오류", body: () => "AI 서버의 답을 읽을 수 없습니다. 다시 시도해 주세요." },
     cancelled: { title: "중단했습니다", body: () => "요청을 멈췄습니다. 질문을 바꾸거나 다시 시도해 주세요." },
@@ -82,6 +83,8 @@
       <div class="sc sc-fail sc-${esc(kind)}" role="alert" data-kind="${esc(kind)}">
         <div class="sc-title">${esc(f.title)}</div>
         <div class="sc-body">${esc(f.body({ timeoutMs: TIMEOUT_MS, ...detail }))}</div>
+        ${detail.serverMessage ? `<div class="sc-server">서버 메시지: ${esc(detail.serverMessage)}</div>` : ""}
+        ${f.note && onRetry ? `<div class="sc-note">${esc(f.note)}</div>` : ""}
         <div class="sc-trust">${esc(TRUST)}</div>
         ${buttons ? `<div class="sc-actions">${buttons}</div>` : ""}
       </div>`;
@@ -100,7 +103,9 @@
       console.warn("[status-card] 서버 오류", res.status, data ?? text.slice(0, 300));
       // 429 = 4번 서버의 "오늘 무료 분석 횟수를 다 씀" (consume_analysis_quota)
       const kind = res.status === 429 ? "quota" : res.status === 401 || res.status === 403 ? "auth" : "server";
-      throw fail(kind, { code: res.status });
+      // 서버가 보낸 이유({error} 또는 {detail:{error:{message}}}) — 담당자가 개발자 도구 없이 보게
+      const msg = data?.error ?? data?.detail?.error?.message;
+      throw fail(kind, { code: res.status, detail: typeof msg === "string" && msg ? { serverMessage: msg.slice(0, 200) } : {} });
     }
     if (data === null) throw fail("format");
     return data;
