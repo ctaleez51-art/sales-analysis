@@ -14,7 +14,8 @@
 |---|---|
 | `part2/auth.js` | 로그인·회원가입·로그아웃, 로그인 전 화면 가리기, 계정 표시, `window.Auth` |
 | `part2/auth.css` | 로그인 화면·계정 표시 스타일 |
-| `part2/config.example.js` | 접속 정보 양식 → 복사해서 `part2/config.js`로 (git에 올라가지 않음) |
+| `part2/config.js` | 팀 Supabase 접속 정보 (URL + publishable 키). GitHub Pages 배포를 위해 저장소에 올림 |
+| `part2/config.example.js` | 접속 정보 양식 (다른 Supabase 프로젝트로 바꿀 때 참고) |
 | `part2/login-demo.html` | 로그인 확인용 페이지 |
 | `supabase/schema.sql` | 테이블, RLS 정책, 사용량 한도 함수(`consume_analysis_quota`), CSV 저장 버킷 |
 | `supabase/payment.sql` | 결제 주문 생성·완료·실패 함수 (**아직 Supabase에 적용 안 함**, 결제 작업 때 적용) |
@@ -24,7 +25,7 @@
 ## 처음 설정 (한 번만)
 1. Supabase SQL Editor에서 `supabase/schema.sql` 전체 실행
 2. Authentication > Sign In / Providers > Email > **Confirm email 끄기** → Save (아래 "알려진 제약" 참고)
-3. `part2/config.example.js`를 복사해 `part2/config.js`를 만들고 URL과 publishable 키 입력
+3. `part2/config.js`에 URL과 publishable 키 입력 (팀 프로젝트 값은 이미 들어 있음)
 
 ## 로컬에서 확인하기
 저장소 폴더에서 정적 서버를 띄워요 (`file://`로 열면 로그인이 동작하지 않을 수 있어요).
@@ -64,7 +65,7 @@ Auth.client.functions.invoke("analyze-shop", { body });  // Edge Function 호출
 ## 키 관리
 | 키 | 용도 | 위치 |
 |---|---|---|
-| Supabase URL, publishable 키 | 브라우저 로그인·DB 조회 (RLS 적용, 공개 가능한 키) | `part2/config.js` (git 제외) |
+| Supabase URL, publishable 키 | 브라우저 로그인·DB 조회 (RLS 적용, 공개 가능한 키) | `part2/config.js` (저장소에 올림) |
 | Supabase secret / service_role 키 | 결제 승인 후 요금제 변경 (RLS 우회) | Edge Function Secret만 |
 | 토스 클라이언트 키 | 결제창 호출 (공개 가능) | 브라우저 |
 | 토스 시크릿 키 | 결제 승인 API | Edge Function Secret만 |
