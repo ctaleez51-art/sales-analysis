@@ -25,7 +25,7 @@
 ## 앱 실행 방법
 ```bash
 python -m venv .venv
-.venv\Scriptsctivate          # macOS/Linux: source .venv/bin/activate
+.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 copy .env.example .env           # macOS/Linux: cp .env.example .env  → 값 채우기
 streamlit run app.py
