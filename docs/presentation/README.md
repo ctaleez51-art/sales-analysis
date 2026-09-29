@@ -6,6 +6,7 @@
 |---|---|
 | [M1_presentation_draft_v0.1.pptx](M1_presentation_draft_v0.1.pptx) | 원본 — PowerPoint 로 열어 바로 고칠 수 있음. 발표자 노트(시연 대본 · 예상 질문)는 **노트 창**에 있음 |
 | [M1_presentation_draft_v0.1.pdf](M1_presentation_draft_v0.1.pdf) | 미리보기 — GitHub 에서 바로 보기 |
+| [DEMO.md](DEMO.md) | 시연 순서 (9장 · 약 4분) — 여는 곳 · 흐름 · 잘못된 CSV 시험 파일 · AI 실패 대비 |
 
 ## 구성 (14장, 약 15분)
 
