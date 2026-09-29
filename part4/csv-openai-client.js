@@ -1,6 +1,6 @@
 import {buildResult} from "./result-engine.js";
 
-const API_URL="https://hpuwvtekmzujixvzgdeo.supabase.co/functions/v1/analyze-shop";
+const API_URL="https://joxyzphsqjwuyobkboqe.supabase.co/functions/v1/analyze-shop";
 const CSV_BASE="https://raw.githubusercontent.com/ctaleez51-art/sales-analysis/feature/csv-input/data";
 const CSV_FILES=["sales_2026_06.csv","sales_2026_07.csv","sales_2026_08.csv","sales_2026_09.csv"];
 
