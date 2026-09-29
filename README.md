@@ -22,4 +22,12 @@ CSV 매출 데이터를 올리면 지표를 계산하고, AI가 결과를 분석
 
 ## 폴더
 
-- `docs/` : 기획 문서 (PRD 등)
+```
+저장소/
+├── README.md              # 서비스 또는 프로그램 소개
+└── DevelopDoc/
+    ├── PRD.md             # 제품 요구 사항
+    ├── TECH_SPEC.md       # 기술 명세
+    ├── WORK_UNITS.md      # 단위 작업 명세 (작업마다 완료 체크리스트)
+    └── FINAL_CHECKLIST.md # 프로젝트 전체 최종 체크리스트
+```
