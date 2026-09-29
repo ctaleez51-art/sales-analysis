@@ -22,7 +22,8 @@
     timeout:   { title: "응답이 너무 오래 걸려 멈췄습니다", body: (o) => `${Math.round(o.timeoutMs / 1000)}초 안에 답이 오지 않아 요청을 멈췄습니다. 잠시 뒤 다시 시도해 주세요.` },
     network:   { title: "서버에 연결하지 못했습니다", body: () => "인터넷 연결을 확인하거나 잠시 뒤 다시 시도해 주세요." },
     rate:      { title: "요청이 몰렸습니다", body: () => "AI 사용량 한도에 걸렸습니다. 1분쯤 뒤 다시 시도해 주세요." },
-    auth:      { title: "AI 서버 설정 문제", body: () => "서버의 키 설정에 문제가 있어 AI를 부르지 못했습니다. 서버 담당자에게 알려 주세요." },
+    auth:      { title: "로그인을 다시 확인해 주세요", body: () => "AI 서버가 요청을 거절했습니다(로그인 만료 또는 권한 없음). 다시 로그인한 뒤 시도해 주세요." },
+    login:     { title: "로그인이 필요합니다", body: () => "AI 분석은 로그인한 사용자만 쓸 수 있습니다. 로그인한 뒤 다시 시도해 주세요. (지표와 차트는 로그인 없이도 볼 수 있습니다)" },
     server:    { title: "AI 서버 오류", body: (o) => `AI 서버에서 오류가 났습니다${o.code ? ` (코드 ${o.code})` : ""}. 잠시 뒤 다시 시도해 주세요.` },
     app:       { title: "요청을 처리하지 못했습니다", body: (o) => o.message || "서버가 요청을 처리하지 못했습니다." },
     format:    { title: "응답 형식 오류", body: () => "AI 서버의 답을 읽을 수 없습니다. 다시 시도해 주세요." },
@@ -171,12 +172,36 @@
     return { ok: false, kind };
   }
 
+  // AI 글에 흔한 마크다운(제목 · 목록 · 굵게)만 모양으로 바꾼다. 먼저 전부 이스케이프하므로 태그는 실행되지 않는다.
+  function textToHTML(text) {
+    const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    const out = [];
+    let list = null; // "ul" | "ol"
+    const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
+    for (const raw of String(text).split(/\r?\n/)) {
+      const line = raw.trim();
+      let m;
+      if (!line) { close(); continue; }
+      if ((m = line.match(/^#{1,6}\s+(.*)$/))) { close(); out.push(`<h4 class="sc-md-h">${inline(m[1])}</h4>`); continue; }
+      if ((m = line.match(/^[-*•]\s+(.*)$/)) || (m = line.match(/^\d+[.)]\s+(.*)$/))) {
+        const kind = /^\d/.test(line) ? "ol" : "ul";
+        if (list !== kind) { close(); out.push(`<${kind} class="sc-md-list">`); list = kind; }
+        out.push(`<li>${inline(m[1])}</li>`);
+        continue;
+      }
+      close();
+      out.push(`<div class="sc-md-p">${inline(line)}</div>`); // p 는 팀 styles.css `#answer p` 카드 모양이 덮는다
+    }
+    close();
+    return out.join("");
+  }
+
   function renderText(target, text) {
     target.innerHTML = `
       <div class="sc sc-text">
-        <div class="sc-text-head"><span class="sc-badge">AI 분석</span><span class="sc-badge sc-badge-plain">형식 없는 답변</span></div>
-        <div class="sc-text-body">${esc(text)}</div>
-        <div class="sc-note">AI가 정해진 형식(요약 · 사실 · 원인 후보 · 실행 제안)으로 답하지 않아 받은 글을 그대로 보여 줍니다. 원인은 확정이 아닙니다.</div>
+        <div class="sc-text-head"><span class="sc-badge">AI 분석</span><span class="sc-badge sc-badge-plain">글 답변</span></div>
+        <div class="sc-text-body">${textToHTML(text)}</div>
+        <div class="sc-note">숫자는 계산 코드가 만든 값이고, AI 는 그 결과를 해석했습니다. 원인은 확정이 아닙니다.</div>
       </div>`;
   }
 

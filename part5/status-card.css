@@ -66,7 +66,10 @@
 .sc-text-head { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .sc-badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: var(--accent, #5468ff); background: var(--accent-soft, #eef1ff); border: 1px solid #d8def8; }
 .sc-badge-plain { color: #475467; background: #f2f4f7; border-color: #eaecf0; }
-.sc-text-body { white-space: pre-wrap; color: var(--ink, #172033); }
+.sc-text-body { color: var(--ink, #172033); display: grid; gap: 8px; }
+.sc-md-h { margin: 6px 0 0; font-size: 15px; font-weight: 800; color: var(--accent, #5468ff); }
+.sc-md-p { margin: 0; }
+.sc-md-list { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
 .sc-note { font-size: 13px; color: var(--muted, #667085); }
 
 @media (max-width: 520px) {

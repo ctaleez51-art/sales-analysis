@@ -8,8 +8,18 @@
 import { buildResult, percentChange } from "../part4/result-engine.js";
 import { readFiles, readTable } from "./csv.js";
 
-// 4번 Supabase Edge Function — 주소는 공개돼도 되는 값, 키는 서버 Secret 에만 있다
-const AI_URL = "https://hpuwvtekmzujixvzgdeo.supabase.co/functions/v1/analyze-shop";
+// 4번 Supabase Edge Function (팀 Supabase 프로젝트, part4/RUN.md) — 주소는 공개돼도 되는 값, OpenAI 키는 서버 Secret 에만 있다.
+// 서버는 verify_jwt=true 라서 로그인한 사용자의 access token 을 Authorization 헤더로 보내야 한다.
+const AI_URL = "https://joxyzphsqjwuyobkboqe.supabase.co/functions/v1/analyze-shop";
+
+// 로그인 토큰 — 4번 RUN.md 의 약속(getAccessToken · supabaseClient)과 2번 window.Auth.client 를 차례로 찾는다
+async function accessToken() {
+  if (typeof window.getAccessToken === "function") return (await window.getAccessToken()) || null;
+  const client = window.Auth?.client || window.supabaseClient;
+  if (!client?.auth?.getSession) return null;
+  const { data } = await client.auth.getSession();
+  return data?.session?.access_token || null;
+}
 const SAMPLE_FILES = ["sales_2026_06.csv", "sales_2026_07.csv", "sales_2026_08.csv", "sales_2026_09.csv"];
 const SAMPLE_DIR = "../data/";
 
@@ -160,20 +170,27 @@ window.dashboard = {
   analyze(question) {
     if (!state) return Promise.resolve({ ok: false, kind: "no-data" });
     const body = { result: state.result, question };
-    const send = aiRequest ? (signal) => aiRequest(body, signal) : window.postJSON(AI_URL, body);
-    // 2번 로그인이 붙어 있으면 AI 를 부르기 직전에 하루 한도를 1회 쓴다 ([다시 시도]도 매번 확인).
-    // 화면 쪽 확인은 1차 방어다 — 서버에서 한도를 확인하는 것은 TECH_SPEC T-08.
+    const fail = (kind) => Object.assign(new Error(kind), { kind });
+    // 순서: 로그인 토큰 → 하루 한도 → AI 서버. [다시 시도]도 매번 이 순서로 확인한다.
+    // 화면 쪽 한도 확인은 1차 방어다 — 서버에서 한도를 확인하는 것은 TECH_SPEC T-08.
     const request = async (signal) => {
+      let token;
+      try { token = await accessToken(); }
+      catch (e) { console.warn("[dashboard] 로그인 확인 실패", e); throw fail("login"); }
+      if (!token) throw fail("login"); // 토큰 없이 부르면 서버가 401 — 한도도 쓰지 않는다
+      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
       if (typeof window.Auth?.consumeQuota === "function") {
         let allowed;
         try { allowed = await window.Auth.consumeQuota(); }
-        catch (e) { console.warn("[dashboard] 한도 확인 실패", e); throw Object.assign(new Error("quota-check"), { kind: "quota-check" }); }
-        if (!allowed) throw Object.assign(new Error("quota"), { kind: "quota" });
+        catch (e) { console.warn("[dashboard] 한도 확인 실패", e); throw fail("quota-check"); }
+        if (!allowed) throw fail("quota");
       }
-      return send(signal);
+      return aiRequest
+        ? aiRequest(body, signal, headers)
+        : fetch(AI_URL, { method: "POST", headers, body: JSON.stringify(body), signal });
     };
     return window.runAnalysis(request, { target: $("answer") });
   },
-  // 확인용: 실제 서버 대신 가짜 응답을 넣는다. null 이면 실제 서버
+  // 확인용: 실제 서버 대신 가짜 응답을 넣는다 — fn(body, signal, headers). null 이면 실제 서버
   setAIRequest(fn) { aiRequest = typeof fn === "function" ? fn : null; },
 };
