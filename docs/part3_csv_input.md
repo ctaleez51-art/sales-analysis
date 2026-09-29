@@ -23,7 +23,8 @@ data/
 └─ answer_key.json            정답표 (코드로 대조하는 기준값)
 docs/
 ├─ part3_csv_input.md         이 문서
-└─ part3_answer_scenario.md   정답 시나리오 (사람이 읽는 채점 기준)
+├─ part3_answer_scenario.md   정답 시나리오 (사람이 읽는 채점 기준)
+└─ part3_to_part4_metric_spec.md  4번 지표 계산 구현 명세 (AI에게 읽히는 용도)
 tools/
 └─ generate_sales.py          더미 데이터 생성 스크립트
 ```
