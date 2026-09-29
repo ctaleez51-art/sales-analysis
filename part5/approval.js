@@ -1,8 +1,8 @@
 /**
  * [담당5] 계획 승인 화면 — 과제 Step 3 "계획 제안 → 승인 → 실행 → 실행 기록"
  *
- * app.js 는 고치지 않는다. 질문 클릭·Enter 를 먼저(capture 단계) 받아 계획 카드를 띄우고,
- * [승인]을 눌렀을 때만 app.js 의 answerByQuestion(q) 를 부른다. [취소]면 부르지 않는다.
+ * 질문 클릭·Enter 를 먼저(capture 단계) 받아 계획 카드를 띄우고,
+ * [승인]을 눌렀을 때만 app.js 의 window.dashboard.analyze(q) 로 AI 서버를 부른다. [취소]면 부르지 않는다.
  * 계획 카드는 숫자를 만들지 않는다 — 행 수·기간처럼 데이터에서 그대로 세는 값만 쓴다.
  * AI 계획: setPlanProvider((signal, {question, rows, period}) => fetch(…)) 로 등록하면
  *   status-card.js 의 로딩 · 실패 화면을 거쳐 AI 계획(steps[].desc)을 보여 준다.
@@ -27,36 +27,39 @@
   let planProvider = null;
   window.setPlanProvider = (fn) => { planProvider = typeof fn === "function" ? fn : null; };
 
-  const BADGE = { rule: "규칙 기반 계획 · LLM 연결 전", ai: "AI 계획", mock: "목업 계획" };
+  const BADGE = { rule: "규칙 기반 계획", ai: "AI 계획", mock: "목업 계획" };
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  // app.js 의 전역 변수 current (불러온 CSV 행)
-  const rowsNow = () => (typeof current !== "undefined" && Array.isArray(current) ? current : null);
+  // app.js 가 불러온 CSV 행
+  const rowsNow = () => window.dashboard?.rows?.() ?? null;
 
-  // app.js answerByQuestion 의 분기와 같은 순서로 계획을 적는다
+  // 계산은 이미 4번 엔진(buildResult)이 끝냈다 — 계획은 "어떤 계산 결과를 보고, AI 에 무엇을 묻는지"를 적는다
   function planFor(q) {
     const base = [
-      { do: "날짜를 월 단위로 묶어 최근 두 달(전월 · 이번 달)을 나눈다", tool: "calculatePeriodComparison" },
-      { do: "두 달의 광고비 · 방문 · 구매 · 매출 · 구매전환율과 변화율을 계산한다", tool: "calculateKPIs" },
+      { do: "올린 CSV를 합쳐 월별로 묶고, 최근 두 달(전월 · 이번 달)을 비교한다", tool: "buildResult → monthly_kpis · changes" },
     ];
+    const ai = { do: "계산 결과만 AI에 보내 확인된 사실 · 원인 후보(확정 아님) · 실행 제안 · 한계를 받는다 (AI는 숫자를 다시 계산하지 않음)", tool: "AI 서버 analyze-shop" };
     if (q.includes("채널")) {
       return [...base,
-        { do: "채널별 ROAS를 두 달 비교해 가장 크게 떨어진 채널을 찾는다", tool: "calculateBreakdown(channel)" },
-        { do: "확인된 사실 · 채널 분석 · 다음 분석을 정리한다", tool: "설명 문장" }];
+        { do: "판매 채널(쿠팡 · 네이버스토어 · 자사몰)별 ROAS · 구매전환율을 두 달 비교한다", tool: "channel_kpis" }, ai];
     }
     if (q.includes("상품")) {
       return [...base,
-        { do: "상품별 매출 변화율을 비교해 가장 크게 떨어진 상품을 찾는다", tool: "calculateBreakdown(product)" },
-        { do: "확인된 사실 · 상품 분석 · 다음 분석을 정리한다", tool: "설명 문장" }];
+        { do: "쿠팡에서 경쟁 최저가가 우리보다 낮은 제품 목록을 확인한다", tool: "diagnostics" },
+        { do: "채널별 변화와 함께 먼저 볼 제품을 고른다", tool: "channel_kpis" }, ai];
+    }
+    if (q.includes("전환율")) {
+      return [...base,
+        { do: "방문 → 장바구니 → 구매 단계별 비율(장바구니율 · 장바구니→구매율)을 두 달 비교한다", tool: "monthly_kpis" },
+        { do: "전환율이 가장 많이 떨어진 채널을 찾는다", tool: "channel_kpis" }, ai];
     }
     if (q.includes("지표") || q.includes("먼저")) {
       return [...base,
-        { do: "구매전환율 변화를 확인해 먼저 볼 지표를 고른다", tool: "calculateKPIs" },
-        { do: "우선 확인 지표 · 근거 · 한계를 정리한다", tool: "설명 문장" }];
+        { do: "전월 대비 변화가 가장 큰 지표를 고른다", tool: "changes" }, ai];
     }
     return [...base,
-      { do: "광고비 → 방문 → 구매 → 매출 순서로 변화율을 이어 본다", tool: "calculatePeriodComparison" },
-      { do: "확인된 사실 · 원인 후보(확정 아님) · 다음 분석을 정리한다", tool: "설명 문장" }];
+      { do: "광고비 → 방문 → 구매 → 매출 순서로 변화율을 이어 보고, 가장 많이 떨어진 채널을 찾는다", tool: "changes · channel_kpis" },
+      { do: "경쟁가 진단 결과를 함께 본다", tool: "diagnostics" }, ai];
   }
 
   function monthsOf(rows) {
@@ -76,6 +79,7 @@
     q = (q || "").trim();
     if (!q) return;
     window.cancelRequest?.(planEl);
+    window.cancelRequest?.(answerEl);
     answerEl.innerHTML = "";
     logEl.hidden = true;
 
@@ -127,26 +131,36 @@
     planEl.querySelector(".plan-approve").focus();
   }
 
-  function approve() {
+  const AI_TOOL = "AI 서버 analyze-shop";
+  const KIND = { ok: "완료", cancelled: "중단", timeout: "시간 초과", network: "연결 실패", rate: "요청 몰림", auth: "서버 설정 문제", server: "서버 오류", app: "처리 실패", format: "형식 오류", "no-data": "데이터 없음" };
+
+  function writeLog(p, at, aiState) {
+    const cell = (s) => (s.tool === AI_TOOL ? aiState : { text: "완료", cls: "st-done" });
+    logEl.innerHTML = `
+      <summary>실행 기록 · ${p.steps.length}단계 · AI ${esc(aiState.text)}</summary>
+      <table>
+        <thead><tr><th>단계</th><th>할 일</th><th>도구</th><th>상태</th><th>입력</th></tr></thead>
+        <tbody>
+          ${p.steps.map((s, i) => { const c = cell(s); return `<tr><td>${i + 1}</td><td>${esc(s.do)}</td><td><code>${esc(s.tool)}</code></td><td class="${c.cls}">${esc(c.text)}</td><td>${p.rows}행</td></tr>`; }).join("")}
+        </tbody>
+      </table>
+      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 4번 계산 엔진이 불러올 때 이미 계산했고, AI 에는 그 결과만 보냅니다. [다시 시도]의 결과는 위 답변 칸에 나옵니다.</p>`;
+    logEl.hidden = false;
+  }
+
+  async function approve() {
     if (!pending) return;
     const p = pending;
     pending = null;
     const at = new Date();
-    answerByQuestion(p.q); // app.js — 실제 계산은 여기서만 일어난다
-    const ok = answerEl.textContent.trim().length > 0;
-
     planEl.innerHTML = `<div class="plan-card plan-done">✓ 계획 승인됨 · ${at.toLocaleTimeString("ko-KR")} · ${esc(p.q)}</div>`;
-    logEl.innerHTML = `
-      <summary>실행 기록 · ${p.steps.length}단계 · ${ok ? "완료" : "결과 없음"}</summary>
-      <table>
-        <thead><tr><th>단계</th><th>할 일</th><th>도구</th><th>상태</th><th>입력</th></tr></thead>
-        <tbody>
-          ${p.steps.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.do)}</td><td><code>${esc(s.tool)}</code></td><td class="${ok ? "st-done" : "st-fail"}">${ok ? "완료" : "결과 없음"}</td><td>${p.rows}행</td></tr>`).join("")}
-        </tbody>
-      </table>
-      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 계산 코드가 만들고, 계획 카드는 숫자를 만들지 않습니다.</p>`;
-    logEl.hidden = false;
+    writeLog(p, at, { text: "진행 중", cls: "" });
+    // 여기서만 AI 를 부른다 (승인 전에는 0회)
+    const r = window.dashboard?.analyze ? await window.dashboard.analyze(p.q) : { ok: false, kind: "no-data" };
+    if (r.kind === "replaced") return; // 더 새 질문이 자리를 가져갔다
+    writeLog(p, at, r.ok ? { text: "완료", cls: "st-done" } : { text: KIND[r.kind] || "실패", cls: "st-fail" });
   }
+
 
   function cancel() {
     if (!pending) return;
@@ -157,6 +171,7 @@
 
   function reset() {
     window.cancelRequest?.(planEl);
+    window.cancelRequest?.(answerEl);
     pending = null;
     planEl.innerHTML = "";
     logEl.hidden = true;
