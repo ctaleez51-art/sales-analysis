@@ -14,6 +14,7 @@
 </section>
 <div id="errors" class="errors" role="alert" hidden></div>
 <section id="app" hidden>
+<p id="gaps" class="gaps" role="note" hidden></p>
 <div class="kpis" id="kpis"></div>
 <div class="grid">
 <article class="panel"><h2>월별 매출</h2><div id="months"></div></article>
@@ -21,7 +22,7 @@
 </div>
 <article class="panel"><h2>판매 채널별 ROAS <small class="panel-sub">이번 달 · 전월 대비</small></h2><div id="channels"></div></article>
 <article class="panel diag" id="diagnostics" hidden><h2>쿠팡 경쟁가 진단 <small class="panel-sub">4번 계산 엔진</small></h2><div class="diag-body"></div></article>
-<article class="insight"><h2>데이터에서 확인된 변화</h2><p id="insight"></p><h3>자주 묻는 질문</h3><div class="faq" aria-label="자주 묻는 질문"><button type="button" class="faq-btn">매출이 왜 떨어졌어?</button><button type="button" class="faq-btn">광고비는 늘었는데 왜 매출이 안 늘었어?</button><button type="button" class="faq-btn">어떤 판매 채널의 성과가 가장 많이 변했어?</button><button type="button" class="faq-btn">어떤 상품을 먼저 확인해야 해?</button><button type="button" class="faq-btn">구매 전환율이 떨어진 이유를 분석해줘.</button><button type="button" class="faq-btn">지금 가장 먼저 확인해야 할 지표가 뭐야?</button></div><div class="question"><input id="question" value="광고비는 늘었는데 왜 매출이 떨어졌어?" aria-label="분석 질문"><button id="ask">분석하기</button></div><div id="answer" aria-live="polite"></div></article>
+<article class="insight"><h2>데이터에서 확인된 변화</h2><p id="insight"></p><h3>자주 묻는 질문</h3><div class="faq" aria-label="자주 묻는 질문"><button type="button" class="faq-btn">매출이 왜 떨어졌어?</button><button type="button" class="faq-btn">광고비는 늘었는데 왜 매출이 안 늘었어?</button><button type="button" class="faq-btn">어떤 판매 채널의 성과가 가장 많이 변했어?</button><button type="button" class="faq-btn" data-needs="unit_price competitor_min_price">어떤 상품을 먼저 확인해야 해?</button><button type="button" class="faq-btn" data-needs="add_to_cart">구매 전환율이 어느 단계에서 떨어졌어?</button><button type="button" class="faq-btn">지금 가장 먼저 확인해야 할 지표가 뭐야?</button></div><div class="question"><input id="question" value="광고비는 늘었는데 왜 매출이 떨어졌어?" aria-label="분석 질문"><button id="ask">분석하기</button></div><div id="answer" aria-live="polite"></div></article>
 </section>
 </main>
 <script src="answer-card.js"></script><script src="status-card.js"></script><script src="approval.js"></script><script type="module" src="app.js"></script>

@@ -34,6 +34,16 @@
   const rowsNow = () => window.dashboard?.rows?.() ?? null;
 
   // 계산은 이미 4번 엔진(buildResult)이 끝냈다 — 계획은 "어떤 계산 결과를 보고, AI 에 무엇을 묻는지"를 적는다
+  const DIAG = ["unit_price", "competitor_min_price"];
+  // 필요한 열이 CSV에 없으면 그 단계는 계산 불가라고 계획에 미리 적는다
+  function markGaps(steps) {
+    const missing = window.dashboard?.missing?.() ?? [];
+    return steps.map((s) => {
+      const lack = (s.needs || []).filter((c) => missing.includes(c));
+      return lack.length ? { ...s, do: `${s.do} — 이 CSV에 ${lack.join(", ")} 열이 없어 계산 불가로 넘김` } : s;
+    });
+  }
+
   function planFor(q) {
     const base = [
       { do: "올린 CSV를 합쳐 월별로 묶고, 최근 두 달(전월 · 이번 달)을 비교한다", tool: "buildResult → monthly_kpis · changes" },
@@ -45,12 +55,12 @@
     }
     if (q.includes("상품")) {
       return [...base,
-        { do: "쿠팡에서 경쟁 최저가가 우리보다 낮은 제품 목록을 확인한다", tool: "diagnostics" },
+        { do: "쿠팡에서 경쟁 최저가가 우리보다 낮은 제품 목록을 확인한다", tool: "diagnostics", needs: DIAG },
         { do: "채널별 변화와 함께 먼저 볼 제품을 고른다", tool: "channel_kpis" }, ai];
     }
     if (q.includes("전환율")) {
       return [...base,
-        { do: "방문 → 장바구니 → 구매 단계별 비율(장바구니율 · 장바구니→구매율)을 두 달 비교한다", tool: "monthly_kpis" },
+        { do: "방문 → 장바구니 → 구매 단계별 비율(장바구니율 · 장바구니→구매율)을 두 달 비교한다", tool: "monthly_kpis", needs: ["add_to_cart"] },
         { do: "전환율이 가장 많이 떨어진 채널을 찾는다", tool: "channel_kpis" }, ai];
     }
     if (q.includes("지표") || q.includes("먼저")) {
@@ -59,7 +69,7 @@
     }
     return [...base,
       { do: "광고비 → 방문 → 구매 → 매출 순서로 변화율을 이어 보고, 가장 많이 떨어진 채널을 찾는다", tool: "changes · channel_kpis" },
-      { do: "경쟁가 진단 결과를 함께 본다", tool: "diagnostics" }, ai];
+      { do: "경쟁가 진단 결과를 함께 본다", tool: "diagnostics", needs: DIAG }, ai];
   }
 
   // AI 계획 응답(화면연결_데이터모양 ②) → 화면용 단계. desc 가 없으면 do 도 받는다.
@@ -93,7 +103,7 @@
     const period = prev ? `${prev} → ${cur}` : cur ? `${cur} (비교할 바로 앞 달 없음)` : "기간 없음";
     const show = (steps, source) => showPlan({ q, steps, rows: rows.length, period, twoMonths: !!prev }, source);
 
-    if (!planProvider || typeof window.runRequest !== "function") return show(planFor(q), "rule");
+    if (!planProvider || typeof window.runRequest !== "function") return show(markGaps(planFor(q)), "rule");
 
     pending = null;
     window.runRequest(planEl, (signal) => planProvider(signal, { question: q, rows: rows.length, period }), {
@@ -103,7 +113,7 @@
         if (!steps.length) throw new Error("steps 가 없습니다");
         show(steps, data?.source === "mock" ? "mock" : "ai");
       },
-      extra: [{ label: "규칙 기반 계획으로 계속", onClick: () => show(planFor(q), "rule") }],
+      extra: [{ label: "규칙 기반 계획으로 계속", onClick: () => show(markGaps(planFor(q)), "rule") }],
     });
   }
 

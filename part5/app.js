@@ -55,7 +55,42 @@ const KPIS = [
   { key: "aov", label: "객단가", fmt: won },
 ];
 
-let state = null; // { rows, result, source }
+// 선택 열 — csv.js 필수 7열 밖이라 파일에 없을 수 있다. 4번 엔진은 없는 열을 0으로 더하므로(R1 빈칸≠0 위반),
+// 화면과 AI 에 넘기기 전에 그 열로 만든 값만 null(계산 불가)로 바꾼다. 숫자를 새로 계산하지는 않는다.
+const OPTIONAL = {
+  add_to_cart: ["add_to_cart", "cart_rate", "cart_to_purchase_rate"],
+  impressions: ["impressions", "ctr"],
+  clicks: ["clicks", "ctr", "cpc"],
+  units: ["units"],
+  refund: ["refund"],
+};
+const DIAG_COLS = ["unit_price", "competitor_min_price"]; // 쿠팡 경쟁가 진단(4번 diagnostics)
+const filled = (v) => v != null && String(v).trim() !== "";
+
+// 한 행이라도 비어 있으면 합계가 틀리므로 "없음"으로 본다
+function missingColumns(rows) {
+  return [...Object.keys(OPTIONAL), ...DIAG_COLS].filter((c) => !rows.every((r) => filled(r[c])));
+}
+
+function maskResult(result, missing) {
+  if (!missing.length) return result;
+  const out = structuredClone(result);
+  const fields = new Set(missing.flatMap((c) => OPTIONAL[c] || []));
+  const blank = (k) => { if (k) for (const f of fields) if (f in k) k[f] = null; };
+  blank(out.current);
+  blank(out.previous);
+  Object.values(out.monthly_kpis || {}).forEach(blank);
+  Object.values(out.channel_kpis || {}).forEach((byMonth) => Object.values(byMonth).forEach(blank));
+  const diagMissing = DIAG_COLS.filter((c) => missing.includes(c));
+  if (diagMissing.length && out.diagnostics) {
+    out.diagnostics = { ...out.diagnostics, coupang_undercut_product_count: null, coupang_undercut_products: null,
+      unavailable_reason: `${diagMissing.join(", ")} 열이 없거나 빈칸이 있어 경쟁가 진단을 할 수 없음` };
+  }
+  out.data_gaps = { missing_columns: missing, note: "이 열로 만든 값은 null(계산 불가)이며 0이 아니다. 이 값으로 결론을 내리지 말 것." };
+  return out;
+}
+
+let state = null; // { rows, result, source, missing }
 let aiRequest = null; // 확인용으로 바꿔 끼울 수 있는 AI 요청 함수
 
 function showErrors(list) {
@@ -75,8 +110,9 @@ function bars(el, items) {
 }
 
 function render(rows, source) {
-  const result = buildResult(rows);
-  state = { rows, result, source };
+  const missing = missingColumns(rows);
+  const result = maskResult(buildResult(rows), missing);
+  state = { rows, result, source, missing };
   window.dispatchEvent(new CustomEvent("dashboard:data"));
   const { current, previous, changes, currentPeriod, previousPeriod, monthly_kpis, channel_kpis, diagnostics } = result;
   if (!current) {
@@ -95,11 +131,19 @@ function render(rows, source) {
   // 월별 매출
   bars($("months"), Object.entries(monthly_kpis).map(([p, k]) => ({ label: p, value: k.revenue, text: wonShort(k.revenue) })));
 
-  // 이번 달 퍼널
+  // 없는 열 안내 — 해당 칸은 "계산 불가"
+  const gapsEl = $("gaps");
+  gapsEl.hidden = !missing.length;
+  gapsEl.innerHTML = missing.length
+    ? `이 CSV에 없는(또는 빈칸이 있는) 열: <code>${missing.map(esc).join("</code> <code>")}</code> — 이 열로 만드는 칸은 0이 아니라 <b>계산 불가</b>로 표시하고, AI에도 계산 불가로 전달합니다.`
+    : "";
+
+  // 이번 달 퍼널 — 장바구니 열이 없으면 구매는 방문 대비(cvr)로 보여 준다
+  const noCart = current.add_to_cart == null;
   const steps = [
     ["방문", current.visits, ""],
-    ["장바구니", current.add_to_cart, current.cart_rate == null ? "" : `방문의 ${rate(current.cart_rate)}`],
-    ["구매", current.purchases, current.cart_to_purchase_rate == null ? "" : `장바구니의 ${rate(current.cart_to_purchase_rate)}`],
+    ["장바구니", current.add_to_cart, noCart ? "add_to_cart 열이 없음" : current.cart_rate == null ? "" : `방문의 ${rate(current.cart_rate)}`],
+    ["구매", current.purchases, noCart ? `방문의 ${rate(current.cvr)}` : current.cart_to_purchase_rate == null ? "" : `장바구니의 ${rate(current.cart_to_purchase_rate)}`],
   ];
   $("funnel").innerHTML = steps.map(([name, n, note], i) =>
     `<div class="funnel-step" style="width:${100 - i * 18}%"><b>${name}</b> ${count(n)}${note ? ` <small>${note}</small>` : ""}</div>`).join("");
@@ -113,7 +157,11 @@ function render(rows, source) {
 
   // 경쟁가 진단 (4번 diagnostics)
   const diagEl = $("diagnostics");
-  if (diagnostics && Array.isArray(diagnostics.coupang_undercut_products)) {
+  if (diagnostics && diagnostics.coupang_undercut_products === null) {
+    diagEl.hidden = false;
+    diagEl.querySelector(".diag-body").innerHTML =
+      `<p><b>진단 불가</b> — ${esc(diagnostics.unavailable_reason || "경쟁가 열이 없습니다")}. 경쟁가가 더 낮은 제품이 없다는 뜻이 아닙니다.</p>`;
+  } else if (diagnostics && Array.isArray(diagnostics.coupang_undercut_products)) {
     const list = diagnostics.coupang_undercut_products;
     diagEl.hidden = false;
     diagEl.querySelector(".diag-body").innerHTML = list.length
@@ -131,6 +179,13 @@ function render(rows, source) {
     : months.length > 1
       ? `${currentPeriod} 바로 앞 달 데이터가 없어 전월 비교를 할 수 없습니다(올린 달: ${months.join(", ")}). 연속된 달의 파일을 함께 올려 주세요.`
       : `${currentPeriod} 한 달치만 있어 전월 비교를 할 수 없습니다. 두 달 이상의 파일을 함께 올려 주세요.`;
+
+  // 필요한 열이 없는 질문 버튼은 흐리게 (data-needs)
+  document.querySelectorAll(".faq-btn[data-needs]").forEach((b) => {
+    const lack = b.dataset.needs.split(" ").filter((c) => missing.includes(c));
+    b.disabled = lack.length > 0;
+    b.title = lack.length ? `이 CSV에 ${lack.join(", ")} 열이 없어 답할 수 없습니다` : "";
+  });
 
   $("answer").innerHTML = "";
   showErrors([]);
@@ -176,6 +231,7 @@ $("file").addEventListener("change", async (e) => {
 window.dashboard = {
   rows: () => state?.rows ?? null,
   result: () => state?.result ?? null,
+  missing: () => state?.missing ?? [],
   // 승인했을 때만 불린다. 돌려주는 값: { ok, kind }
   analyze(question) {
     if (!state) return Promise.resolve({ ok: false, kind: "no-data" });
