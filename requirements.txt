@@ -1,3 +1,0 @@
-streamlit>=1.46
-supabase>=2.10
-python-dotenv>=1.0

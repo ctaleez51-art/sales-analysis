@@ -3,4 +3,4 @@ node_modules/
 __pycache__/
 .venv/
 .DS_Store
-.streamlit/secrets.toml
+part2/config.js
