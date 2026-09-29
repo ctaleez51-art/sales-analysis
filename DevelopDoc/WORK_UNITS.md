@@ -33,7 +33,7 @@
 ### U01 · 문서 작성
 **담당** 1번 이지연
 - [ ] PRD.md 미결정 사항 전부 채움 (9/29 밤: Q-02 · Q-03 · Q-04 반영, Q-06 정리됨, Q-01 · Q-05 · Q-07 남음)
-- [ ] TECH_SPEC.md 미결정 사항 전부 채움 (9/29 밤: T-02 ~ T-04 · T-06 반영, T-07 정리됨, T-01 · T-05 · T-08 · T-09 남음)
+- [ ] TECH_SPEC.md 미결정 사항 전부 채움 (9/29 밤: T-02 ~ T-04 · T-06 반영, T-07 · T-08 정리됨, T-01 · T-05 · T-09 남음)
 - [ ] 병합 뒤 README 폴더 구조를 실제 폴더에 맞춤 (TECH_SPEC §6)
 
 ### U02 · 로그인 화면 + DB
@@ -69,7 +69,7 @@
 - [x] Supabase Edge Function `analyze-shop` — OpenAI 키는 서버 Secret, 서버 코드 `part4/supabase/functions/analyze-shop/index.ts`
 - [x] 팀 Supabase 프로젝트로 통일 · 로그인 토큰 확인(verify_jwt) (`part4/RUN.md`)
 - [x] 사실 / 원인 후보 / 다음 액션 / 한계 구분 원칙 (`part4/AI_SERVER.md`)
-- [ ] AI 서버에서 하루 한도 확인 (TECH_SPEC T-08, STEP_CHECKLIST Step 5)
+- [x] AI 서버에서 로그인 · 하루 한도 확인 (401 · 429, `analyze-shop/index.ts`)
 - [ ] 분석문의 숫자가 계산 결과와 같은지 확인 (STEP_CHECKLIST Step 1)
 
 ### U07 · 대시보드 + CSS

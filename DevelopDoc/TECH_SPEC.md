@@ -149,5 +149,5 @@ part5/                대시보드 index.html · app.js · csv.js · 화면 부�
 | T-05 | 배포 방법 | GitHub Pages — 저장소 주인 설정 필요(2번 PR #4 에 방법 있음), 체험 주소는 `…/part5/` |
 | T-06 | 테스트 방법 | §8 반영, "합친 뒤" 칸은 병합 후 |
 | T-07 | Supabase 프로젝트 통일 | **정리됨(9/29 밤)** — AI 서버를 팀 프로젝트(`joxyzphsqjwuyobkboqe`)로, 테스트 프로젝트는 쓰지 않음 (4번 PR #2 `part4/RUN.md`). 5번 화면도 같은 주소로 (PR #3) |
-| T-08 | AI 서버의 로그인 · 사용 한도 확인 | 로그인: 서버 verify_jwt=true 로 확인됨(4번). 한도: 화면에서 `Auth.consumeQuota()` 먼저 확인(5번), 서버에서 부르는 부분은 아직 (STEP_CHECKLIST Step 5) |
+| T-08 | AI 서버의 로그인 · 사용 한도 확인 | **정리됨(9/29 밤)** — 서버가 로그인 확인(401) 뒤 `consume_analysis_quota` 로 1회 쓰고, 넘으면 429 (4번 PR #2 `analyze-shop/index.ts`). 화면은 한도를 세지 않음(두 번 세던 것 고침, 5번 PR #3) |
 | T-09 | CSV 읽기 담당 | 3번 명세는 4번, 현재 구현은 5번 `part5/csv.js`. 누가 맡을지 확인 |
