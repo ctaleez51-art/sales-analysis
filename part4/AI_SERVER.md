@@ -3,14 +3,20 @@
 ## Production flow
 3번 CSV/rows → `part4/result-engine.js` → calculated KPI/diagnostics → AI server → 5번 dashboard JSON.
 
-## Current implementation
-The working demo uses a Supabase Edge Function named `analyze-shop`.
+## Team Supabase
+Final integration must use the same Supabase project as login/payment:
+`joxyzphsqjwuyobkboqe.supabase.co`
+
+The Edge Function name is `analyze-shop`.
 
 The server:
 1. receives the deterministic `buildResult(rows)` output,
 2. reads `OPENAI_API_KEY` from a server-side Secret,
 3. calls OpenAI Responses API,
 4. returns the analysis to the client.
+
+## Migration from test project
+The previous standalone test project `hpuwvtekmzujixvzgdeo` must not be used by the final merged app. Deploy `part4/supabase/functions/analyze-shop/index.ts` to the team Supabase project and register `OPENAI_API_KEY` there.
 
 ## Security
 Do not commit `OPENAI_API_KEY`.
