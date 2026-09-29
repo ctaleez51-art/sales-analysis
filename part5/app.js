@@ -55,8 +55,9 @@ const KPIS = [
   { key: "aov", label: "객단가", fmt: won },
 ];
 
-// 선택 열 — csv.js 필수 7열 밖이라 파일에 없을 수 있다. 4번 엔진은 없는 열을 0으로 더하므로(R1 빈칸≠0 위반),
-// 화면과 AI 에 넘기기 전에 그 열로 만든 값만 null(계산 불가)로 바꾼다. 숫자를 새로 계산하지는 않는다.
+// 엔진이 없는 열을 0으로 더하는 것(R1 빈칸≠0 위반)을 막는 안전장치. csv.js 가 이 열들을 필수로 검사하므로
+// 지금은 걸릴 일이 없지만, 필수 목록이 바뀌어도 화면 · AI 에 0 이 넘어가지 않게 남겨 둔다.
+// 그 열로 만든 값만 null(계산 불가)로 바꾼다. 숫자를 새로 계산하지는 않는다.
 const OPTIONAL = {
   add_to_cart: ["add_to_cart", "cart_rate", "cart_to_purchase_rate"],
   impressions: ["impressions", "ctr"],
