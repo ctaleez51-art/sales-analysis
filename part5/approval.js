@@ -4,7 +4,9 @@
  * app.js 는 고치지 않는다. 질문 클릭·Enter 를 먼저(capture 단계) 받아 계획 카드를 띄우고,
  * [승인]을 눌렀을 때만 app.js 의 answerByQuestion(q) 를 부른다. [취소]면 부르지 않는다.
  * 계획 카드는 숫자를 만들지 않는다 — 행 수·기간처럼 데이터에서 그대로 세는 값만 쓴다.
- * LLM 이 붙으면 planFor() 를 AI 계획으로 바꾸고 source 를 "ai" 로 준다.
+ * AI 계획: setPlanProvider((signal, {question, rows, period}) => fetch(…)) 로 등록하면
+ *   status-card.js 의 로딩 · 실패 화면을 거쳐 AI 계획(steps[].desc)을 보여 준다.
+ *   실패하면 [규칙 기반 계획으로 계속] 으로 아래 planFor() 계획을 쓸 수 있다. 등록 안 하면 planFor() 그대로.
  */
 (() => {
   const answerEl = document.getElementById("answer");
@@ -22,6 +24,10 @@
   answerEl.after(logEl);
 
   let pending = null;
+  let planProvider = null;
+  window.setPlanProvider = (fn) => { planProvider = typeof fn === "function" ? fn : null; };
+
+  const BADGE = { rule: "규칙 기반 계획 · LLM 연결 전", ai: "AI 계획", mock: "목업 계획" };
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   // app.js 의 전역 변수 current (불러온 CSV 행)
@@ -57,9 +63,19 @@
     return [...new Set(rows.map((r) => String(r.date || "").slice(0, 7)).filter(Boolean))].sort();
   }
 
+  // AI 계획 응답(화면연결_데이터모양 ②) → 화면용 단계. desc 가 없으면 do 도 받는다.
+  function stepsFrom(data) {
+    const list = Array.isArray(data) ? data : data?.steps;
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((s) => ({ do: String(s?.desc ?? s?.do ?? "").trim(), tool: String(s?.tool ?? "").trim() }))
+      .filter((s) => s.do);
+  }
+
   function propose(q) {
     q = (q || "").trim();
     if (!q) return;
+    window.cancelRequest?.(planEl);
     answerEl.innerHTML = "";
     logEl.hidden = true;
 
@@ -72,20 +88,36 @@
 
     const months = monthsOf(rows);
     const period = months.length >= 2 ? `${months.at(-2)} → ${months.at(-1)}` : (months[0] || "기간 없음");
-    const steps = planFor(q);
-    pending = { q, steps, rows: rows.length, period, twoMonths: months.length >= 2 };
+    const show = (steps, source) => showPlan({ q, steps, rows: rows.length, period, twoMonths: months.length >= 2 }, source);
 
+    if (!planProvider || typeof window.runRequest !== "function") return show(planFor(q), "rule");
+
+    pending = null;
+    window.runRequest(planEl, (signal) => planProvider(signal, { question: q, rows: rows.length, period }), {
+      label: "AI가 분석 계획을 세우는 중",
+      onSuccess: (data) => {
+        const steps = stepsFrom(data);
+        if (!steps.length) throw new Error("steps 가 없습니다");
+        show(steps, data?.source === "mock" ? "mock" : "ai");
+      },
+      extra: [{ label: "규칙 기반 계획으로 계속", onClick: () => show(planFor(q), "rule") }],
+    });
+  }
+
+  function showPlan(p, source) {
+    const { q, steps, rows, period } = p;
+    pending = p;
     planEl.innerHTML = `
       <div class="plan-card" role="region" aria-label="분석 계획">
         <div class="plan-head">
           <h3>분석 계획 확인</h3>
-          <span class="plan-badge">규칙 기반 계획 · LLM 연결 전</span>
+          <span class="plan-badge plan-src-${source}">${BADGE[source]}</span>
         </div>
         <p class="plan-q">질문: <b>${esc(q)}</b></p>
         <ol class="plan-steps">
           ${steps.map((s) => `<li><span class="plan-do">${esc(s.do)}</span><code>${esc(s.tool)}</code></li>`).join("")}
         </ol>
-        <p class="plan-data">사용할 데이터: <b>${rows.length}행</b> · 비교 기간 <b>${esc(period)}</b></p>
+        <p class="plan-data">사용할 데이터: <b>${rows}행</b> · 비교 기간 <b>${esc(period)}</b></p>
         ${pending.twoMonths ? "" : `<p class="plan-warn">전월 비교에는 최소 2개월 데이터가 필요합니다. 승인해도 비교 결과는 나오지 않습니다.</p>`}
         <div class="plan-actions">
           <button type="button" class="plan-approve">승인하고 분석</button>
@@ -124,6 +156,7 @@
   }
 
   function reset() {
+    window.cancelRequest?.(planEl);
     pending = null;
     planEl.innerHTML = "";
     logEl.hidden = true;
