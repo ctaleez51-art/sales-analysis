@@ -66,7 +66,25 @@ body.auth-locked > *:not(.auth-gate) { display: none !important; }
   background: #fff; color: #172033; font: inherit; font-weight: 700; cursor: pointer;
 }
 
+/* 결제 (payment.js) */
+.pay-upgrade {
+  border: 0; border-radius: 999px; padding: 6px 12px;
+  background: var(--accent, #5468ff); color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+}
+.pay-upgrade:disabled { opacity: 0.6; cursor: default; }
+.pay-banner {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 950;
+  display: flex; align-items: center; gap: 12px; max-width: min(560px, calc(100vw - 24px));
+  padding: 10px 10px 10px 16px; border-radius: 12px; border: 1px solid;
+  font: 14px/1.5 Pretendard, Inter, system-ui, sans-serif; box-shadow: 0 4px 12px rgba(23, 32, 51, 0.08);
+}
+.pay-banner button { border: 0; background: transparent; font-size: 18px; line-height: 1; cursor: pointer; color: inherit; padding: 4px 8px; }
+.pay-banner-info { background: #f2f4f7; border-color: #d0d5dd; color: #344054; }
+.pay-banner-success { background: #ecfdf3; border-color: #abefc6; color: #067647; }
+.pay-banner-error { background: #fef3f2; border-color: #fecdca; color: #b42318; }
+
 @media (max-width: 520px) {
+  .pay-banner { top: auto; bottom: 12px; }
   .auth-card { padding: 24px 20px; }
   .auth-account { position: static; margin: 12px 16px 0; border-radius: 12px; }
 }

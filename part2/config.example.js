@@ -11,4 +11,6 @@
 window.SUPABASE_CONFIG = {
   url: "https://xxxxxxxx.supabase.co",
   key: "sb_publishable_xxxxxxxx",
+  // 토스페이먼츠 개발자센터 > API 개별 연동 키 > 클라이언트 키 (test_ck_...). 시크릿 키(test_sk_)는 넣지 않기
+  tossClientKey: "test_ck_xxxxxxxx",
 };

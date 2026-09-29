@@ -17,6 +17,7 @@
  *   Auth.onReady(fn)         로그인 확인이 끝나면 fn(user) 실행
  *   await Auth.consumeQuota() 분석 실행 직전에 호출. 오늘 한도 안이면 true
  *   await Auth.getProfile()  { plan, daily_usage }
+ *   await Auth.refreshAccount() 요금제·사용 횟수 표시 갱신
  *   await Auth.signOut()
  *
  * 화면을 숨기는 것은 1차 방어일 뿐이다. 실제 데이터 보호는 Supabase RLS 정책이 한다.
@@ -240,6 +241,11 @@
       if (error) throw error;
       if (accountBar) showApp(Auth.user); // 사용 횟수 표시 갱신
       return data === true;
+    },
+
+    async refreshAccount() {
+      // 결제 등으로 요금제가 바뀐 뒤 계정 표시를 다시 그린다
+      if (Auth.user && accountBar) await showApp(Auth.user);
     },
 
     async signOut() {

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 결제 처리 함수 (schema.sql 실행 후, SQL Editor에서 한 번 실행)
+-- 결제 처리 함수 (schema.sql 실행 후, SQL Editor에서 실행. 여러 번 실행해도 안전)
 --
 --   create_payment_order : 로그인 사용자가 호출. 금액은 plans 표에서만 가져옴
 --   complete_payment     : 서버(service_role)만 호출. 토스 승인 성공 후 요금제 변경
@@ -22,6 +22,11 @@ declare
 begin
   if v_uid is null then
     raise exception 'not authenticated';
+  end if;
+
+  -- 이미 같은 요금제를 쓰는 사용자는 다시 결제할 수 없다
+  if exists (select 1 from public.profiles p where p.id = v_uid and p.plan = p_plan) then
+    raise exception 'already on plan: %', p_plan;
   end if;
 
   select pl.price, pl.name into v_price, v_name
