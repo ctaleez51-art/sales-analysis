@@ -45,3 +45,30 @@ AI 응답은 `analysis` 필드로 표시합니다.
 ## 검증
 3번 실제 CSV 총 1,200행을 `answer_key.json`과 비교:
 **190 PASS / 0 FAIL**
+
+
+## 5. 2번 로그인 연동 (필수)
+
+팀 Edge Function은 `verify_jwt=true` 입니다. 따라서 브라우저 호출 시 로그인 사용자의 Supabase access token을 보내야 합니다.
+
+4번 클라이언트는 다음 둘 중 하나를 지원합니다.
+
+1. 2번이 전역 `window.supabaseClient`를 제공
+2. 2번이 `window.getAccessToken()` 함수를 제공
+
+권장 계약:
+
+```js
+window.getAccessToken = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+};
+```
+
+4번은 해당 토큰을 다음 헤더로 전송합니다.
+
+```
+Authorization: Bearer <access_token>
+```
+
+토큰이나 API Key를 GitHub에 하드코딩하지 않습니다.
