@@ -23,7 +23,14 @@ export function buildResult(rows){
  const byMonth=group(rows,r=>String(r.date||"").slice(0,7));
  const periods=Object.keys(byMonth).filter(Boolean).sort();
  const monthly_kpis=Object.fromEntries(periods.map(p=>[p,calculateKPIs(byMonth[p])]));
- const currentPeriod=periods.at(-1)||null,previousPeriod=periods.at(-2)||null;
+ const currentPeriod=periods.at(-1)||null;
+ const candidatePrevious=periods.at(-2)||null;
+ const isPreviousMonth=(prev,curr)=>{
+   if(!prev||!curr)return false;
+   const [py,pm]=prev.split("-").map(Number),[cy,cm]=curr.split("-").map(Number);
+   return cy*12+cm-(py*12+pm)===1;
+ };
+ const previousPeriod=isPreviousMonth(candidatePrevious,currentPeriod)?candidatePrevious:null;
  const current=currentPeriod?monthly_kpis[currentPeriod]:null,previous=previousPeriod?monthly_kpis[previousPeriod]:null;
  const changes={};
  if(current&&previous) for(const k of CHANGE_FIELDS) changes[k]=percentChange(current[k],previous[k]);
