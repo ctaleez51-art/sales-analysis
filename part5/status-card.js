@@ -19,13 +19,24 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const TRUST = "계산 결과(위 KPI · 차트)는 코드가 계산한 값이라 그대로 믿어도 됩니다.";
 
+  const isSetup = (o) => o.code >= 400 && o.code < 500;
+  const val = (v, o) => (typeof v === "function" ? v(o) : v);
+
   const FAIL = {
     timeout:   { title: "응답이 너무 오래 걸려 멈췄습니다", body: (o) => `${Math.round(o.timeoutMs / 1000)}초 안에 답이 오지 않아 요청을 멈췄습니다. 잠시 뒤 다시 시도해 주세요.` },
     network:   { title: "서버에 연결하지 못했습니다", body: () => "인터넷 연결을 확인하거나 잠시 뒤 다시 시도해 주세요." },
     auth:      { title: "로그인을 다시 확인해 주세요", body: () => "AI 서버가 요청을 거절했습니다(로그인 만료 또는 권한 없음). 다시 로그인한 뒤 시도해 주세요." },
     login:     { title: "로그인이 필요합니다", body: () => "AI 분석은 로그인한 사용자만 쓸 수 있습니다. 로그인한 뒤 다시 시도해 주세요. (지표와 차트는 로그인 없이도 볼 수 있습니다)" },
     // 4번 서버는 한도를 먼저 센 뒤 OpenAI 를 부른다 — 실패해도 1회가 줄어 있다
-    server:    { title: "AI 서버 오류", body: (o) => `AI 서버에서 오류가 났습니다${o.code ? ` (코드 ${o.code})` : ""}. 잠시 뒤 다시 시도해 주세요.`, note: "다시 시도하면 오늘 AI 분석 횟수가 1회 더 줄어듭니다." },
+    // 400번대(401·403·429 제외)는 서버 설정 문제(예: OpenAI 거절)라 같은 요청을 다시 보내도 또 실패한다 → 다시 시도를 권하지 않는다
+    server:    {
+      title: (o) => (isSetup(o) ? "AI 서버 설정 문제" : "AI 서버 오류"),
+      body: (o) => isSetup(o)
+        ? `AI 서버가 요청을 처리하지 못했습니다 (코드 ${o.code}). 서버 설정 문제라 다시 시도해도 해결되지 않을 가능성이 큽니다. AI 서버 담당자에게 알려 주세요.`
+        : `AI 서버에서 오류가 났습니다${o.code ? ` (코드 ${o.code})` : ""}. 잠시 뒤 다시 시도해 주세요.`,
+      note: (o) => (isSetup(o) ? "다시 눌러도 오늘 AI 분석 횟수만 1회 더 줄어듭니다." : "다시 시도하면 오늘 AI 분석 횟수가 1회 더 줄어듭니다."),
+      retry: (o) => (isSetup(o) ? { label: "그래도 다시 시도", ghost: true } : null),
+    },
     app:       { title: "요청을 처리하지 못했습니다", body: (o) => o.message || "서버가 요청을 처리하지 못했습니다." },
     format:    { title: "응답 형식 오류", body: () => "AI 서버의 답을 읽을 수 없습니다. 다시 시도해 주세요." },
     cancelled: { title: "중단했습니다", body: () => "요청을 멈췄습니다. 질문을 바꾸거나 다시 시도해 주세요." },
@@ -75,16 +86,19 @@
     stopTicker(target);
     const f = FAIL[kind] || FAIL.server;
     if (f.noRetry) onRetry = null; // 다시 눌러도 결과가 같은 실패
+    const o = { timeoutMs: TIMEOUT_MS, ...detail };
+    const retry = val(f.retry, o) || { label: "다시 시도", ghost: false };
+    const note = val(f.note, o);
     const buttons = [
-      onRetry ? `<button type="button" class="sc-btn sc-retry">다시 시도</button>` : "",
+      onRetry ? `<button type="button" class="sc-btn${retry.ghost ? " sc-btn-ghost" : ""} sc-retry">${esc(retry.label)}</button>` : "",
       ...extra.map((b, i) => `<button type="button" class="sc-btn sc-btn-ghost sc-extra" data-i="${i}">${esc(b.label)}</button>`),
     ].join("");
     target.innerHTML = `
       <div class="sc sc-fail sc-${esc(kind)}" role="alert" data-kind="${esc(kind)}">
-        <div class="sc-title">${esc(f.title)}</div>
-        <div class="sc-body">${esc(f.body({ timeoutMs: TIMEOUT_MS, ...detail }))}</div>
-        ${detail.serverMessage ? `<div class="sc-server">서버 메시지: ${esc(detail.serverMessage)}</div>` : ""}
-        ${f.note && onRetry ? `<div class="sc-note">${esc(f.note)}</div>` : ""}
+        <div class="sc-title">${esc(val(f.title, o))}</div>
+        <div class="sc-body">${esc(f.body(o))}</div>
+        ${detail.serverMessage ? `<div class="sc-server-msg">서버 메시지: ${esc(detail.serverMessage)}</div>` : ""}
+        ${note && onRetry ? `<div class="sc-note">${esc(note)}</div>` : ""}
         <div class="sc-trust">${esc(TRUST)}</div>
         ${buttons ? `<div class="sc-actions">${buttons}</div>` : ""}
       </div>`;

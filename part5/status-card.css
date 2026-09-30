@@ -47,7 +47,7 @@
 .sc-fail { border-color: #fecdca; border-top: 3px solid #b42318; }
 .sc-title { font-size: 16px; font-weight: 800; color: #b42318; }
 .sc-body { color: #344054; }
-.sc-server { font-size: 13px; color: #475467; font-family: ui-monospace, Consolas, monospace; background: #f9fafb; border: 1px solid #eaecf0; border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+.sc-server-msg { font-size: 13px; color: #475467; font-family: ui-monospace, Consolas, monospace; background: #f9fafb; border: 1px solid #eaecf0; border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
 .sc-note { font-size: 13px; color: #b54708; }
 .sc-trust { font-size: 13px; color: #027a48; background: #f3fbf6; border: 1px solid #cfeedd; border-radius: 8px; padding: 6px 10px; }
 /* 중단은 사용자가 한 일이라 빨강 대신 회색 */
