@@ -40,7 +40,7 @@
 | 5 | 고급 기능, 운영 준비: 정확도 기록, 사용량 제한, 키 점검 |
 
 - 우리 팀 목표 단계: (  )
-- 단계별 통과 기준: [STEP_CHECKLIST.md](./STEP_CHECKLIST.md)
+- 단계별 통과 기준: [STEP_CHECKLIST.md](../Submission/STEP_CHECKLIST.md)
 
 ## 6. 지표 목록
 출처: 3번 `docs/part3_to_part4_metric_spec.md`
