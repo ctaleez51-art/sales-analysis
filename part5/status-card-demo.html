@@ -14,7 +14,7 @@
 <body>
 <main class="wrap">
 <header><p class="eyebrow">[담당5] LOADING · ERROR</p><h1>로딩 · 실패 화면 확인</h1>
-<p>AI 서버를 부르지 않고 <b>가짜 요청</b>으로 확인한다. 실제 서버(4번 Supabase)는 <code>runAnalysis(postJSON(주소, {result, question}))</code> 한 줄로 붙는다. 5초가 지나면 "오래 걸림" 안내, 20초가 지나면 자동 중단.</p></header>
+<p>AI 서버를 부르지 않고 <b>가짜 요청</b>으로 확인한다. 실제 서버(4번 Supabase)는 <code>runAnalysis(postJSON(주소, {result, question}))</code> 한 줄로 붙는다. 10초가 지나면 "오래 걸림" 안내, 60초가 지나면 자동 중단(4번 서버 응답 7~27초).</p></header>
 <article class="insight">
   <h2>가짜 요청 고르기</h2>
   <div id="btns"></div>
@@ -43,11 +43,11 @@ const GROUPS = {
     "정상 · JSON (1.5초)": { fn: wait(1500, res(200, { analysis: JSON.stringify(NORMAL) })) },
     "정상 · ```json 코드 블록 (1.5초)": { fn: wait(1500, res(200, { analysis: "```json\n" + JSON.stringify(NORMAL) + "\n```" })) },
     "정상 · 그냥 글 (1.5초)": { fn: wait(1500, res(200, { analysis: "(예시) 매출이 줄었습니다.\n원인 후보: 구매 단계 이탈 <b>태그는 글자로</b>" })) },
-    "느림 · 8초 뒤 정상": { fn: wait(8000, res(200, { analysis: JSON.stringify(NORMAL) })) },
+    "느림 · 15초 뒤 정상": { fn: wait(15000, res(200, { analysis: JSON.stringify(NORMAL) })) },
   },
   "실패": {
     "시간 초과 (3초로 줄임)": { fn: () => new Promise(() => {}), opts: { timeoutMs: 3000 } },
-    "시간 초과 (20초 그대로)": { fn: () => new Promise(() => {}) },
+    "시간 초과 (60초 그대로)": { fn: () => new Promise(() => {}) },
     "연결 실패": { fn: (signal) => fetch("http://127.0.0.1:9/", { signal }) },
     "429 오늘 한도 초과": { fn: wait(800, res(429, { error: "오늘의 무료 분석 5회를 모두 사용했습니다." })) },
     "401 키 문제": { fn: wait(800, res(401, { error: "Invalid API key sk-테스트" })) },

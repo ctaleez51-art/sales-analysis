@@ -41,3 +41,9 @@ body:has(> .auth-account:not([hidden])) .wrap { padding-top: 84px; }
   body > .auth-account { position: absolute; top: 12px; left: 16px; right: 16px; margin: 0; justify-content: flex-start; }
   body:has(> .auth-account:not([hidden])) .wrap { padding-top: 106px; }
 }
+
+/* 없는 열 안내 · 계산 불가 근거 */
+.gaps { margin: 0 0 14px; font-size: 14px; color: #93370d; background: #fffaeb; border: 1px solid #fedf89; border-radius: 10px; padding: 10px 14px; line-height: 1.6; }
+.gaps ul { margin: 4px 0 0; padding-left: 18px; }
+.kpis .why { display: block; font-size: 12px; color: #b54708; margin: 2px 0; overflow-wrap: anywhere; }
+.faq-btn[hidden] { display: none; }

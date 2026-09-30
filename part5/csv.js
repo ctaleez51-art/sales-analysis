@@ -5,8 +5,12 @@
  *   - 실패하면 이유를 모아서 돌려준다 (파일명 · 행 번호 · 열 이름)
  * 숫자는 여기서 바꾸지 않는다. 계산은 4번 buildResult 가 한다.
  */
-export const REQUIRED = ["date", "product", "channel", "ad_spend", "visits", "purchases", "revenue"];
-export const REQUIRED_NUMBERS = ["ad_spend", "visits", "purchases", "revenue"];
+// 필수 = 4번 buildResult 가 읽는 14열. 3번 정답표(answer_key.json)가 이 14열로 만든 값을 전부 검증하므로,
+// 7열만 필수로 두면 선택 열로 만든 지표(CTR · 장바구니율 · 경쟁가 진단)가 0으로 계산돼 정답과 어긋난다.
+export const REQUIRED = ["date", "product", "channel", "unit_price", "competitor_min_price", "impressions", "clicks",
+  "visits", "add_to_cart", "purchases", "units", "revenue", "ad_spend", "refund"];
+export const REQUIRED_NUMBERS = ["unit_price", "competitor_min_price", "impressions", "clicks", "visits", "add_to_cart",
+  "purchases", "units", "revenue", "ad_spend", "refund"];
 const MAX_ERRORS = 5;
 
 // RFC 4180 방식: 따옴표로 감싼 칸 안의 쉼표 · 줄바꿈은 칸의 일부, "" 는 따옴표 하나
