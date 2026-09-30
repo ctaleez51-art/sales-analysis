@@ -2,8 +2,9 @@
 
 ## 가져갈 핵심 파일
 - `result-engine.js`: 3번 rows → 결정론적 KPI 계산
-- `app.js`: OpenAI 분석 호출 예시
-- `index.html`, `styles.css`: 독립 데모용(팀 통합 시 선택)
+- `csv-loader.js`: CSV 읽기 + 필수 컬럼/숫자 검증
+- `csv-openai-client.js`: OpenAI 분석 호출 예시 (Supabase `analyze-shop` 함수 경유)
+- 화면(UI)은 `part5/index.html`을 사용합니다. part4는 화면 파일을 두지 않습니다.
 
 ## 3번 → 4번 입력
 `rows: Array<Object>`
