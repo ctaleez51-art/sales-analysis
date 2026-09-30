@@ -18,6 +18,14 @@
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const TRUST = "계산 결과(위 KPI · 차트)는 코드가 계산한 값이라 그대로 믿어도 됩니다.";
+  // 서버가 보낸 이유는 받은 그대로 두고, 아는 문구만 화면용 한국어로 바꾼다(원문은 괄호로 남겨 담당자가 찾게)
+  const SERVER_MSG_KO = {
+    "OpenAI request failed.": "AI 서비스(OpenAI)가 요청을 거절했습니다.",
+  };
+  const serverMsgHtml = (m) => {
+    const ko = SERVER_MSG_KO[String(m).trim()];
+    return ko ? `${esc(ko)} <span class="sc-server-raw">(${esc(m)})</span>` : esc(m);
+  };
 
   const isSetup = (o) => o.code >= 400 && o.code < 500;
   const val = (v, o) => (typeof v === "function" ? v(o) : v);
@@ -97,7 +105,7 @@
       <div class="sc sc-fail sc-${esc(kind)}" role="alert" data-kind="${esc(kind)}">
         <div class="sc-title">${esc(val(f.title, o))}</div>
         <div class="sc-body">${esc(f.body(o))}</div>
-        ${detail.serverMessage ? `<div class="sc-server-msg">서버 메시지: ${esc(detail.serverMessage)}</div>` : ""}
+        ${detail.serverMessage ? `<div class="sc-server-msg">서버 메시지: ${serverMsgHtml(detail.serverMessage)}</div>` : ""}
         ${note && onRetry ? `<div class="sc-note">${esc(note)}</div>` : ""}
         <div class="sc-trust">${esc(TRUST)}</div>
         ${buttons ? `<div class="sc-actions">${buttons}</div>` : ""}

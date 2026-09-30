@@ -69,6 +69,19 @@ const DIAG_COLS = ["unit_price", "competitor_min_price"]; // 쿠팡 경쟁가 �
 const COL_LABEL = { add_to_cart: "장바구니", impressions: "광고 노출", clicks: "광고 클릭", units: "판매 수량", refund: "반품액", unit_price: "우리 판매가", competitor_min_price: "경쟁 최저가" };
 const filled = (v) => v != null && String(v).trim() !== "";
 
+// 4번 diagnostics.evidence_rule 은 코드 식("channel=쿠팡 AND competitor_min_price < unit_price") — 화면에는 문장으로 바꿔 보여 준다.
+// 식이 바뀌어도 깨지지 않게, 모르는 식은 열 이름만 한국어로 바꾼다.
+function ruleText(rule) {
+  const r = String(rule || "").trim();
+  if (!r) return "";
+  if (/^channel\s*=\s*쿠팡\s+AND\s+competitor_min_price\s*<\s*unit_price$/i.test(r)) return "쿠팡에서 경쟁 최저가가 우리 판매가보다 낮은 제품";
+  return r
+    .replace(/\bchannel\s*=\s*/g, "판매 채널 ")
+    .replace(/\b[a-z_]+\b/g, (w) => COL_LABEL[w] || w)
+    .replace(/\s+AND\s+/g, " 이고 ")
+    .replace(/\s*<\s*/g, " < ");
+}
+
 // 한 행이라도 비어 있으면 합계가 틀리므로 "없음"으로 본다. 돌려주는 값: { 열: 판단 근거 }
 function columnGaps(rows) {
   const gaps = {};
@@ -189,14 +202,14 @@ function render(rows, source) {
     diagEl.querySelector(".diag-body").innerHTML =
       `<p><b>진단 불가</b> — 경쟁가가 더 낮은 제품이 없다는 뜻이 아닙니다.</p>
        <p class="diag-note">근거: ${esc(diagnostics.unavailable_reason || "경쟁가 열이 없음")}
-       <span class="diag-rule">진단 기준: ${esc(diagnostics.evidence_rule || "")} — 우리 판매가와 경쟁 최저가가 모든 행에 있어야 셀 수 있습니다.</span></p>`;
+       <span class="diag-rule">진단 기준: ${esc(ruleText(diagnostics.evidence_rule))} — 우리 판매가와 경쟁 최저가가 모든 행에 있어야 셀 수 있습니다.</span></p>`;
   } else if (diagnostics && Array.isArray(diagnostics.coupang_undercut_products)) {
     const list = diagnostics.coupang_undercut_products;
     diagEl.hidden = false;
     diagEl.querySelector(".diag-body").innerHTML = list.length
       ? `<p>${esc(currentPeriod)} 쿠팡에서 <b>경쟁 최저가가 우리 판매가보다 낮은 제품 ${list.length}개</b></p>
          <ul class="diag-list">${list.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
-         <p class="diag-note">${esc(diagnostics.causality_note || "")} <span class="diag-rule">기준: ${esc(diagnostics.evidence_rule || "")}</span></p>`
+         <p class="diag-note">${esc(diagnostics.causality_note || "")} <span class="diag-rule">기준: ${esc(ruleText(diagnostics.evidence_rule))}</span></p>`
       : `<p>${esc(currentPeriod)} 쿠팡에서 경쟁 최저가가 더 낮은 제품이 없습니다.</p>`;
   } else diagEl.hidden = true;
 
