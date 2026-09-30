@@ -7,7 +7,7 @@
 </head>
 <body>
 <main class="wrap">
-<header><p class="eyebrow">M1 · SALES ANALYTICS</p><h1>매출분석 툴</h1><p>매출 CSV를 올리면 지표를 코드로 계산하고, 계획을 승인하면 AI가 계산 결과를 해석합니다.</p></header>
+<header><p class="eyebrow">M1 · SALES ANALYTICS</p><h1>매출분석 툴</h1><p>매출 CSV를 올리면 지표를 코드로 계산하고, 계획을 승인하면 AI가 계산 결과를 해석합니다.</p><ol class="steps" aria-label="사용 순서"><li>CSV 올리기</li><li>지표 · 차트 확인</li><li>아래에서 질문 → 계획 승인</li><li>AI 해석</li></ol></header>
 <section class="actions">
 <label class="upload">CSV 올리기 (여러 개 가능)<input id="file" type="file" accept=".csv,text/csv" multiple></label>
 <button id="sample">예시 데이터로 시작</button><span id="status" role="status">예시 데이터(6~9월 CSV 4개)로 시작하거나, 월별 CSV를 한꺼번에 골라 올리세요.</span>
@@ -21,7 +21,7 @@
 <article class="panel"><h2>이번 달 구매 퍼널</h2><div id="funnel"></div></article>
 </div>
 <article class="panel"><h2>판매 채널별 ROAS <small class="panel-sub">이번 달 · 전월 대비</small></h2><div id="channels"></div></article>
-<article class="panel diag" id="diagnostics" hidden><h2>쿠팡 경쟁가 진단 <small class="panel-sub">4번 계산 엔진</small></h2><div class="diag-body"></div></article>
+<article class="panel diag" id="diagnostics" hidden><h2>쿠팡 경쟁가 진단 <small class="panel-sub">코드 계산</small></h2><div class="diag-body"></div></article>
 <article class="insight"><h2>데이터에서 확인된 변화</h2><p id="insight"></p><h3>자주 묻는 질문</h3><div class="faq" aria-label="자주 묻는 질문"><button type="button" class="faq-btn">매출이 왜 떨어졌어?</button><button type="button" class="faq-btn">광고비는 늘었는데 왜 매출이 안 늘었어?</button><button type="button" class="faq-btn">어떤 판매 채널의 성과가 가장 많이 변했어?</button><button type="button" class="faq-btn" data-needs="unit_price competitor_min_price">어떤 상품을 먼저 확인해야 해?</button><button type="button" class="faq-btn" data-needs="add_to_cart">구매 전환율이 어느 단계에서 떨어졌어?</button><button type="button" class="faq-btn">지금 가장 먼저 확인해야 할 지표가 뭐야?</button></div><div class="question"><input id="question" value="광고비는 늘었는데 왜 매출이 떨어졌어?" aria-label="분석 질문"><button id="ask">분석하기</button></div><div id="answer" aria-live="polite"></div></article>
 </section>
 </main>

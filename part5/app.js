@@ -36,7 +36,8 @@ const appEl = $("app");
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const won = (n) => (n == null ? "계산 불가" : Math.round(n).toLocaleString("ko-KR") + "원");
-const wonShort = (n) => (n == null ? "계산 불가" : new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 }).format(n) + "원");
+// 막대 옆 짧은 표기: 만 원 단위, 천 단위 쉼표, 소수 없음(3,985만원). 1만 원 미만은 원 단위 그대로
+const wonShort = (n) => (n == null ? "계산 불가" : Math.abs(n) < 10000 ? won(n) : Math.round(n / 10000).toLocaleString("ko-KR") + "만원");
 const times = (n) => (n == null ? "계산 불가" : n.toFixed(2) + "배");
 const rate = (n) => (n == null ? "계산 불가" : (n * 100).toFixed(2) + "%");
 const count = (n) => (n == null ? "계산 불가" : Math.round(n).toLocaleString("ko-KR"));
