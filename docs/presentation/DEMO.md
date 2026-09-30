@@ -6,8 +6,8 @@
 
 | 어디서 | 주소 | 비고 |
 |---|---|---|
-| 배포 | https://ctaleez51-art.github.io/sales-analysis/part5/ | GitHub Pages 소스 브랜치에 PR #1~#4와 로그인 연결이 들어 있어야 로그인 · AI가 동작 |
-| 로컬 | 저장소 최상위에서 `python -m http.server 8790` → http://localhost:8790/part5/ | 파일을 더블클릭해서 열면(`file://`) 로그인이 동작하지 않음 |
+| **로컬 (지금 시연은 이것)** | 저장소 최상위에서 `python -m http.server 8790` → http://localhost:8790/part5/ | 아래 "지금 바로 시연하려면" 참고. 파일을 더블클릭해서 열면(`file://`) 로그인이 동작하지 않음 |
+| 배포 (**지금은 404**) | https://ctaleez51-art.github.io/sales-analysis/part5/ | GitHub Pages 소스가 `feature/login-payment`(part5 없음)로 되어 있어 9/30 현재 404입니다. PM 이 main 에 병합하고 Pages 소스를 main 으로 바꾸면 열립니다 |
 
 - 로그인 화면은 `part5/index.html`에 2번 로그인 스크립트(`docs/part2_auth_db.md` "다른 페이지에 붙이는 방법")가 붙어 있을 때 나옵니다.
 - 로그인 · AI 분석은 인터넷이 필요합니다(Supabase).
@@ -58,6 +58,7 @@ PM 이 팀 저장소 main 에 병합하고 GitHub Pages 소스를 main 으로 �
 
 | 증상 | 해결 |
 |---|---|
+| 배포 주소가 404 | 정상 — main 병합 · Pages 설정 전입니다. 로컬로 여세요 |
 | "사이트에 연결할 수 없음"(로컬) | 서버 창이 켜져 있는지 확인 후 새로고침(F5) |
 | `Address already in use` | 8790을 쓰는 다른 서버를 끄거나 다른 포트로 실행 |
 | 로그인이 안 됨 | 인터넷 연결, 주소가 `file://`이 아닌지 확인 |
