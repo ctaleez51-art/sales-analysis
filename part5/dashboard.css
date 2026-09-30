@@ -54,7 +54,7 @@ body:has(> .auth-account:not([hidden])) .wrap { padding-top: 84px; }
 .steps li::before { content: counter(step); display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #eef1ff; color: #5468ff; font-size: 12px; font-weight: 700; }
 .steps li:not(:last-child)::after { content: "→"; margin-left: 4px; color: #98a2b3; }
 
-/* 휴대폰에서 누르는 버튼은 높이 44px 이상 */
+/* 휴대폰에서 누르는 버튼은 높이 44px 이상 — 2번 계정 상자(프로 결제 · 로그아웃)도 여기서 맞춘다. 2번 파일은 고치지 않는다. */
 @media (max-width: 520px) {
-  .faq-btn, .sc-btn, #ask { min-height: 44px; }
+  .faq-btn, .sc-btn, #ask, body > .auth-account button { min-height: 44px; }
 }
