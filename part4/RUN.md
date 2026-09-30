@@ -32,7 +32,31 @@ API 키 값은 GitHub에 커밋하지 않습니다.
 
 Edge Function은 계산 완료된 `result`를 POST로 받아 OpenAI Responses API에 전달하고 `{ "analysis": "..." }`를 반환합니다.
 
-## 4. 5번에 전달
+## 4. OpenAI 키 교체 방법
+OpenAI 크레딧 부족, 키 만료, 키 노출 등이 발생해도 GitHub 코드를 수정하지 않습니다.
+
+팀 Supabase 프로젝트에서 아래 Secret 값만 교체합니다.
+
+```
+Project: joxyzphsqjwuyobkboqe
+Edge Function: analyze-shop
+Secret name: OPENAI_API_KEY
+```
+
+절대 커밋하지 말아야 할 것:
+
+```
+sk-proj-... 실제 API Key 문자열
+```
+
+교체 절차:
+1. Supabase Dashboard에서 `joxyzphsqjwuyobkboqe` 프로젝트로 이동
+2. Edge Functions → Secrets 메뉴로 이동
+3. `OPENAI_API_KEY` 값을 새 키로 교체
+4. `analyze-shop` 호출 테스트
+5. 문제가 있으면 Edge Function을 재배포
+
+## 5. 5번에 전달
 대시보드는 `buildResult(rows)` 결과의 다음 필드를 사용합니다.
 
 - `monthly_kpis`
@@ -46,8 +70,7 @@ AI 응답은 `analysis` 필드로 표시합니다.
 3번 실제 CSV 총 1,200행을 `answer_key.json`과 비교:
 **190 PASS / 0 FAIL**
 
-
-## 5. 2번 로그인 연동 (필수)
+## 6. 2번 로그인 연동 (필수)
 
 팀 Edge Function은 `verify_jwt=true` 입니다. 따라서 브라우저 호출 시 로그인 사용자의 Supabase access token을 보내야 합니다.
 
