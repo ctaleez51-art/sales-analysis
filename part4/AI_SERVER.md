@@ -20,7 +20,30 @@ The previous standalone test project `hpuwvtekmzujixvzgdeo` must not be used by 
 
 ## Security
 Do not commit `OPENAI_API_KEY`.
+Do not commit any `sk-proj-...` or other raw API key string.
 Do not call OpenAI directly from browser JavaScript with a secret key.
+
+The only place the OpenAI key should exist is the team Supabase Secret:
+
+```
+Project: joxyzphsqjwuyobkboqe
+Function: analyze-shop
+Secret: OPENAI_API_KEY
+```
+
+## Key rotation
+If OpenAI credit is exhausted, a key expires, or a key is exposed, do not change GitHub code.
+
+Rotate the key by replacing the Supabase Secret value:
+
+1. Open Supabase Dashboard.
+2. Select project `joxyzphsqjwuyobkboqe`.
+3. Go to Edge Functions → Secrets.
+4. Replace the value of `OPENAI_API_KEY`.
+5. Test the `analyze-shop` function.
+6. Redeploy the Edge Function only if the new Secret is not picked up.
+
+Never write the key value in README, JavaScript, TypeScript, Markdown, or commit messages.
 
 ## AI analysis contract
 The model receives already-calculated:
