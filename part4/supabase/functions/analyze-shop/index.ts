@@ -67,8 +67,12 @@ Deno.serve(async (req) => {
       headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "gpt-5.6", input })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error("OpenAI request failed.");
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const reason = data?.error?.message ?? response.statusText;
+      console.error("OpenAI error", response.status, data?.error?.code ?? "", reason);
+      throw new Error(`OpenAI request failed (${response.status}): ${reason}`);
+    }
 
     const analysis = data.output_text ??
       data.output?.flatMap((x) => x.content ?? []).find((x) => x.type === "output_text")?.text ?? "";
