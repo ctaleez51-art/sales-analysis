@@ -153,7 +153,7 @@
           ${p.steps.map((s, i) => { const c = cell(s); return `<tr><td>${i + 1}</td><td>${esc(s.do)}</td><td><code>${esc(s.tool)}</code></td><td class="${c.cls}">${esc(c.text)}</td><td>${p.rows}행</td></tr>`; }).join("")}
         </tbody>
       </table>
-      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 4번 계산 엔진이 불러올 때 이미 계산했고, AI 에는 그 결과만 보냅니다. AI 상태는 [다시 시도]를 포함한 마지막 시도 결과입니다.</p>`;
+      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 파일을 불러올 때 코드가 이미 계산했고, AI 에는 그 결과만 보냅니다. AI 상태는 [다시 시도]를 포함한 마지막 시도 결과입니다.</p>`;
     logEl.hidden = false;
   }
 
