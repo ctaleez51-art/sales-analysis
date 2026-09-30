@@ -5,7 +5,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 관련 문서 | [PRD.md](./PRD.md), [TECH_SPEC.md](./TECH_SPEC.md) |
+| 관련 문서 | [PRD.md](../DevelopDoc/PRD.md), [TECH_SPEC.md](../DevelopDoc/TECH_SPEC.md) |
 
 ---
 

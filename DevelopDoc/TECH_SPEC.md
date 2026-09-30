@@ -100,7 +100,8 @@
 PR #1~#4를 합친 뒤 기준
 ```
 README.md
-DevelopDoc/   PRD, TECH_SPEC, WORK_UNITS, STEP_CHECKLIST, FINAL_CHECKLIST (1번)
+DevelopDoc/   PRD, TECH_SPEC, WORK_UNITS, FINAL_CHECKLIST (1번)
+Submission/   STEP_CHECKLIST, SUBMISSION, ANALYSIS_SUBMISSION (1번)
 part2/        로그인 화면 (2번)
 supabase/     DB 테이블, 권한, 결제 함수 (2번)
 data/         예시 CSV 4개, 정답표 (3번)
