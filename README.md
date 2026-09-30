@@ -84,7 +84,7 @@ part5/        대시보드
 | 1 | 프로젝트매니저 (PRD, 저장소 관리) | 이지연 | `main` 관리 |
 | 2 | 로그인 + 결제창 (DB, 토스페이먼츠) | 허규현 | `feature/login-payment` |
 | 3 | CSV 입력단 (더미 데이터, 정답 시나리오) | 김보겸 | `feature/csv-input` |
-| 4 | 결과 출력단 (지표 계산식, 결과분석, OpenAI 연결) | 김성순 | `feature/result` |
+| 4 | 결과 출력단 (지표 계산식, 결과분석, OpenAI 연결) | 김성순 | `feature/part4-result-engine` |
 | 5 | 대시보드 + CSS | 이두규 | `feature/dashboard` |
 
 ## 작업 규칙
