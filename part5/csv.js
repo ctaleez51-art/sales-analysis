@@ -20,12 +20,19 @@ const looksRawExport = (head) => head.some((h) => /[가-힣]/.test(h));
 
 // 알아보는 마켓 원본 형식 — 제목 줄에 need 가 모두 있으면 주문 한 건을 우리 열 한 행으로 바꾼다(10/1, 규현님 쿠팡 샘플로 확인).
 // 엔진이 행을 더해 월별 · 채널별 값을 내므로 날짜 × 상품별로 따로 합치지 않아도 결과가 같다.
-// 원본에 없는 광고비 · 방문 등은 열을 만들지 않는다(0 이 아니라 app.js 가 "계산 불가"로 표시). 네이버스토어는 실제 파일을 본 뒤 추가.
+// 원본에 없는 광고비 · 방문 등은 열을 만들지 않는다(0 이 아니라 app.js 가 "계산 불가"로 표시).
+// exclude: [열, 조건] — 하나라도 맞으면 매출에서 뺀다(취소 · 반품).
 const MARKET_FORMATS = [{
   label: "쿠팡 주문내역 원본", channel: "쿠팡",
   need: ["주문번호", "주문일", "등록상품명", "구매수(수량)", "결제액"],
   cols: { date: "주문일", product: "등록상품명", units: "구매수(수량)", revenue: "결제액" },
-  status: "주문상태", // 취소 · 반품은 매출에서 뺀다
+  exclude: [["주문상태", /취소|반품/]],
+}, {
+  // 10/1 규현님 네이버스토어 샘플로 확인. 금액은 할인 뒤 · 배송비 제외인 "최종 상품별 총 주문금액", 채널 이름은 3번 데이터와 같게
+  label: "네이버스토어 주문내역 원본", channel: "네이버스토어",
+  need: ["상품주문번호", "주문일시", "상품명", "수량", "최종 상품별 총 주문금액"],
+  cols: { date: "주문일시", product: "상품명", units: "수량", revenue: "최종 상품별 총 주문금액" },
+  exclude: [["주문상태", /취소|반품/], ["클레임상태", /(취소|반품)완료/]], // 반품요청 등 진행 중은 아직 매출
 }];
 
 function readMarket(name, table, head, m) {
@@ -40,7 +47,7 @@ function readMarket(name, table, head, m) {
       errors.push(`${name} ${line}행: 칸 수가 제목(${head.length}칸)과 다릅니다 (${cells.length}칸).`);
       continue;
     }
-    if (/취소|반품/.test(at(cells, m.status))) { excluded++; continue; }
+    if (m.exclude.some(([col, re]) => re.test(at(cells, col)))) { excluded++; continue; }
     const raw = at(cells, m.cols.date);
     const date = raw.slice(0, 10).replace(/[./]/g, "-");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push(`${name} ${line}행 ${m.cols.date}: 날짜 형식(YYYY-MM-DD)이 아닙니다 — "${raw}"`);
@@ -54,7 +61,7 @@ function readMarket(name, table, head, m) {
   }
   if (!errors.length && !rows.length) errors.push(`${name}: 매출로 셀 주문이 없습니다 (취소 · 반품 ${excluded}건 제외).`);
   if (errors.length) return { rows: [], errors, excluded };
-  return { rows, errors, excluded, note: `${m.label} ${rows.length}건${excluded ? `(취소 · 반품 ${excluded}건 제외)` : ""}` };
+  return { rows, errors, excluded, note: `${m.label} ${rows.length}건${excluded ? ` (취소 · 반품 ${excluded}건 제외)` : ""}` };
 }
 
 // RFC 4180 방식: 따옴표로 감싼 칸 안의 쉼표 · 줄바꿈은 칸의 일부, "" 는 따옴표 하나
