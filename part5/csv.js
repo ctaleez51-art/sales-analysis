@@ -13,6 +13,10 @@ export const REQUIRED = ["date", "product", "channel"];
 export const NUMBER_COLUMNS = ["unit_price", "competitor_min_price", "impressions", "clicks", "visits", "add_to_cart",
   "purchases", "units", "revenue", "ad_spend", "refund"];
 const MAX_ERRORS = 5;
+// 마켓(네이버스토어 · 쿠팡)에서 내려받은 주문내역 원본은 제목 줄이 한국어이고 주문 한 건씩이라 바로 읽을 수 없다(10/1).
+// 영어 열 이름 목록만 보여 주면 무엇을 고칠지 모르므로, 파일별로는 짧은 이유를, 바꾸는 방법은 readFiles 가 한 번만 붙인다.
+const RAW_EXPORT_GUIDE = "바꾸는 방법: 날짜 · 상품 · 판매 채널별로 합친 CSV 로 만들어 제목 줄을 date · product · channel 과 숫자 열(예: revenue · purchases · units)로 바꿔 올려 주세요. 예시: part5/test-csv/sales_only_2026_09.csv";
+const looksRawExport = (head) => head.some((h) => /[가-힣]/.test(h));
 
 // RFC 4180 방식: 따옴표로 감싼 칸 안의 쉼표 · 줄바꿈은 칸의 일부, "" 는 따옴표 하나
 export function parseCSV(text) {
@@ -46,6 +50,9 @@ export function readTable(name, text) {
   if (table.length === 0) return { rows: [], errors: [`${name}: 빈 파일입니다.`] };
   const head = table[0].map((h) => h.trim());
   const missing = REQUIRED.filter((k) => !head.includes(k));
+  if (missing.length && looksRawExport(head)) {
+    return { rows: [], rawExport: true, errors: [`${name}: 제목 줄이 한국어라 마켓 주문내역 원본으로 보입니다 — 이 툴은 원본을 바로 읽지 못합니다.`] };
+  }
   if (missing.length) return { rows: [], errors: [`${name}: 필수 열이 없습니다 — ${missing.join(", ")}`] };
   const numbers = NUMBER_COLUMNS.filter((k) => head.includes(k)); // 있는 숫자 열만 검사
   if (!numbers.length) return { rows: [], errors: [`${name}: 숫자 열이 하나도 없습니다 — ${NUMBER_COLUMNS.join(", ")} 중 하나 이상 필요`] };
@@ -80,11 +87,13 @@ export async function readFiles(files) {
       out.errors.push(`${f.name}: CSV 파일이 아닙니다.`);
       continue;
     }
-    const { rows, errors } = readTable(f.name, await f.text());
+    const { rows, errors, rawExport } = readTable(f.name, await f.text());
     out.errors.push(...errors);
+    if (rawExport) out.rawExport = true;
     out.files.push({ name: f.name, rows: rows.length });
     out.rows.push(...rows);
   }
+  if (out.rawExport) out.errors.push(RAW_EXPORT_GUIDE);
   if (out.errors.length) out.rows = [];
   return out;
 }
