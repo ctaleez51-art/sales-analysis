@@ -404,7 +404,7 @@ $("file").addEventListener("change", async (e) => {
     showErrors(out.errors);
     return;
   }
-  render(out.rows, `CSV ${out.files.length}개`);
+  render(out.rows, [`CSV ${out.files.length}개`, ...(out.notes || [])].join(" · ")); // 예: "CSV 1개 · 쿠팡 주문내역 원본 12건"
 });
 
 // 계획 카드(approval.js)가 쓰는 연결부
