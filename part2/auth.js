@@ -10,6 +10,7 @@
  * 붙이면 로그인하지 않은 사람에게는 로그인 화면만 보이고, 로그인하면 원래 화면과
  * 오른쪽 위 계정 표시(이메일 · 요금제 · 로그아웃)가 나타난다. 기존 파일은 고치지 않는다.
  * 로그인 상태는 브라우저(localStorage)에 저장되어 새로고침해도 유지된다.
+ * 로그아웃하거나 다른 계정으로 바뀌면 페이지를 새로 열어 앞사람의 화면과 데이터를 지운다.
  *
  * 다른 파트에서 쓰는 것 (window.Auth):
  *   Auth.client              Supabase 클라이언트. 로그인 사용자 권한(RLS)으로 DB 조회
@@ -257,7 +258,17 @@
 
   function applySession(session) {
     const user = session ? { id: session.user.id, email: session.user.email } : null;
-    const changed = (Auth.user && Auth.user.id) !== (user && user.id);
+    const previous = Auth.user;
+    // 로그인돼 있던 사람이 로그아웃되거나(다른 탭 포함) 다른 계정으로 바뀌면 페이지를 새로 연다.
+    // 그래야 앞사람이 불러온 CSV · 계산 결과 · AI 답변이 화면과 메모리에 남지 않는다.
+    // 처음 열 때(previous 없음)는 새로고침하지 않는다. 하면 끝없이 다시 불러온다.
+    if (previous && (!user || user.id !== previous.id)) {
+      Auth.user = null;
+      document.body.classList.add("auth-locked"); // 새로고침되기 전 잠깐도 보이지 않게
+      location.reload();
+      return;
+    }
+    const changed = (previous && previous.id) !== (user && user.id);
     Auth.user = user;
     if (!user) {
       showGate();
