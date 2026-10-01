@@ -225,6 +225,3 @@ button:focus-visible, .question input:focus-visible, .upload:focus-within { outl
   #kpis .spark-wrap { padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--guide); min-height: 0; }
 }
 
-/* ── 화면 버전 표시: v1 기본 대시보드(9/30) ↔ v2 매출 진단서(10/1) ── */
-.app-version { margin: 32px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
-.app-version b { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; font-weight: 800; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); }

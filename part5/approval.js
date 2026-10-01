@@ -18,11 +18,6 @@
   planEl.setAttribute("aria-live", "polite");
   answerEl.before(planEl);
 
-  const logEl = document.createElement("details");
-  logEl.id = "runlog";
-  logEl.hidden = true;
-  answerEl.after(logEl);
-
   let pending = null;
   let planProvider = null;
   window.setPlanProvider = (fn) => { planProvider = typeof fn === "function" ? fn : null; };
@@ -86,9 +81,7 @@
     if (!q) return;
     window.cancelRequest?.(planEl);
     window.cancelRequest?.(answerEl);
-    lastRun = null;
     answerEl.innerHTML = "";
-    logEl.hidden = true;
 
     const rows = rowsNow();
     if (!rows) {
@@ -140,32 +133,6 @@
     planEl.querySelector(".plan-approve").focus();
   }
 
-  const AI_TOOL = "AI 서버 analyze-shop";
-  const KIND = { ok: "완료", cancelled: "중단", timeout: "시간 초과", network: "연결 실패", auth: "로그인 확인 필요", server: "서버 오류", app: "처리 실패", format: "형식 오류", "no-data": "데이터 없음", quota: "오늘 한도 초과", login: "로그인 필요" };
-
-  function writeLog(p, at, ai, tries) {
-    const cell = (s) => (s.tool === AI_TOOL ? ai : { text: "완료", cls: "st-done" });
-    logEl.innerHTML = `
-      <summary>실행 기록 · ${p.steps.length}단계 · AI ${esc(ai.text)}${tries > 1 ? ` (${tries}번째 시도)` : ""}</summary>
-      <table>
-        <thead><tr><th>단계</th><th>할 일</th><th>도구</th><th>상태</th><th>입력</th></tr></thead>
-        <tbody>
-          ${p.steps.map((s, i) => { const c = cell(s); return `<tr><td>${i + 1}</td><td>${esc(s.do)}</td><td><code>${esc(s.tool)}</code></td><td class="${c.cls}">${esc(c.text)}</td><td>${p.rows}행</td></tr>`; }).join("")}
-        </tbody>
-      </table>
-      <p class="runlog-note">승인 ${at.toLocaleString("ko-KR")} · 비교 기간 ${esc(p.period)} · 숫자는 파일을 불러올 때 코드가 이미 계산했고, AI 에는 그 결과만 보냅니다. AI 상태는 [다시 시도]를 포함한 마지막 시도 결과입니다.</p>`;
-    logEl.hidden = false;
-  }
-
-  let lastRun = null; // 기록 중인 승인 { p, at, tries }
-  const aiState = (r) => (r.ok ? { text: "완료", cls: "st-done" } : { text: KIND[r.kind] || "실패", cls: "st-fail" });
-
-  // AI 요청이 끝날 때마다(다시 시도 포함) 마지막 결과로 기록을 고친다
-  answerEl.addEventListener("sc:done", (e) => {
-    if (!lastRun) return;
-    lastRun.tries++;
-    writeLog(lastRun.p, lastRun.at, aiState(e.detail), lastRun.tries);
-  });
 
   // AI 를 기다리는 동안에는 질문 입구(FAQ · 분석하기 · Enter)를 잠근다 — 새 계획을 또 승인하면
   // 앞 요청이 이미 서버에서 한도를 뺀 뒤라 1회가 더 줄어든다(발표 중 두 번 누르기 사고 방지)
@@ -182,14 +149,11 @@
     const p = pending;
     pending = null;
     const at = new Date();
-    lastRun = { p, at, tries: 0 };
     planEl.innerHTML = `<div class="plan-card plan-done">✓ 계획 승인됨 · ${at.toLocaleTimeString("ko-KR")} · ${esc(p.q)}</div>`;
-    writeLog(p, at, { text: "진행 중", cls: "" }, 0);
     setBusy(true);
     try {
       // 여기서만 AI 를 부른다 (승인 전에는 0회)
-      const r = window.dashboard?.analyze ? await window.dashboard.analyze(p.q) : { ok: false, kind: "no-data" };
-      if (r.kind === "no-data") writeLog(p, at, aiState(r), 0); // status-card 를 거치지 않은 실패
+      if (window.dashboard?.analyze) await window.dashboard.analyze(p.q);
     } finally {
       setBusy(false);
     }
@@ -206,11 +170,9 @@
   function reset() {
     window.cancelRequest?.(planEl);
     window.cancelRequest?.(answerEl);
-    lastRun = null;
     pending = null;
     setBusy(false);
     planEl.innerHTML = "";
-    logEl.hidden = true;
   }
 
   // 질문 입구 세 곳(FAQ 버튼 · 분석하기 · Enter)을 app.js 보다 먼저 받는다
@@ -236,7 +198,7 @@
     propose(questionEl.value);
   }, true);
 
-  // 새 데이터를 불러오면 이전 계획·기록을 지운다
+  // 새 데이터를 불러오면 이전 계획 · 답변을 지운다
   document.getElementById("sample")?.addEventListener("click", reset);
   document.getElementById("file")?.addEventListener("change", reset);
 })();
