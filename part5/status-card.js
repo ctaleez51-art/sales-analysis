@@ -146,7 +146,7 @@
     stopTicker(target);
   }
 
-  // 끝날 때마다(다시 시도 포함) 자리에 "sc:done" 이벤트를 보낸다 — 실행 기록이 마지막 결과를 따라가게
+  // 끝날 때마다(다시 시도 포함) 자리에 "sc:done" 이벤트를 보낸다 — 마지막 결과가 필요한 곳이 들을 수 있게
   async function runRequest(target, requestFn, opts = {}) {
     const r = await runOnce(target, requestFn, opts);
     if (target && r.kind !== "replaced") target.dispatchEvent(new CustomEvent("sc:done", { detail: r }));

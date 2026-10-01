@@ -391,6 +391,10 @@ async function loadSample() {
   }
 }
 
+// 로그아웃하면 앞 사람의 데이터 · 분석이 화면에 남지 않게 처음 상태로 새로 불러온다(10/1).
+// 2번 auth.js 는 로그아웃 때 로그인 창만 덮어서, 다시 로그인하면 이전 분석이 그대로 보였다 — 같은 브라우저를 다른 사람이 쓸 수 있다.
+window.Auth?.client?.auth?.onAuthStateChange?.((event) => { if (event === "SIGNED_OUT") location.reload(); });
+
 $("sample").addEventListener("click", loadSample);
 $("file").addEventListener("change", async (e) => {
   const input = e.target;
