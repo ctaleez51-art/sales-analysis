@@ -13,6 +13,49 @@ export const REQUIRED = ["date", "product", "channel"];
 export const NUMBER_COLUMNS = ["unit_price", "competitor_min_price", "impressions", "clicks", "visits", "add_to_cart",
   "purchases", "units", "revenue", "ad_spend", "refund"];
 const MAX_ERRORS = 5;
+// 마켓(네이버스토어 · 쿠팡)에서 내려받은 주문내역 원본은 제목 줄이 한국어이고 주문 한 건씩이라 바로 읽을 수 없다(10/1).
+// 영어 열 이름 목록만 보여 주면 무엇을 고칠지 모르므로, 파일별로는 짧은 이유를, 바꾸는 방법은 readFiles 가 한 번만 붙인다.
+const RAW_EXPORT_GUIDE = "바꾸는 방법: 날짜 · 상품 · 판매 채널별로 합친 CSV 로 만들어 제목 줄을 date · product · channel 과 숫자 열(예: revenue · purchases · units)로 바꿔 올려 주세요. 예시: part5/test-csv/sales_only_2026_09.csv";
+const looksRawExport = (head) => head.some((h) => /[가-힣]/.test(h));
+
+// 알아보는 마켓 원본 형식 — 제목 줄에 need 가 모두 있으면 주문 한 건을 우리 열 한 행으로 바꾼다(10/1, 규현님 쿠팡 샘플로 확인).
+// 엔진이 행을 더해 월별 · 채널별 값을 내므로 날짜 × 상품별로 따로 합치지 않아도 결과가 같다.
+// 원본에 없는 광고비 · 방문 등은 열을 만들지 않는다(0 이 아니라 app.js 가 "계산 불가"로 표시). 네이버스토어는 실제 파일을 본 뒤 추가.
+const MARKET_FORMATS = [{
+  label: "쿠팡 주문내역 원본", channel: "쿠팡",
+  need: ["주문번호", "주문일", "등록상품명", "구매수(수량)", "결제액"],
+  cols: { date: "주문일", product: "등록상품명", units: "구매수(수량)", revenue: "결제액" },
+  status: "주문상태", // 취소 · 반품은 매출에서 뺀다
+}];
+
+function readMarket(name, table, head, m) {
+  const at = (cells, col) => (cells[head.indexOf(col)] ?? "").trim();
+  const num = (v) => v.replace(/,/g, ""); // "23,900" → 23900
+  const errors = [], rows = [];
+  let excluded = 0;
+  if (table.length === 1) return { rows: [], errors: [`${name}: 데이터가 없습니다 (제목 행만 있음).`] };
+  for (let i = 1; i < table.length && errors.length < MAX_ERRORS; i++) {
+    const line = i + 1, cells = table[i];
+    if (cells.length !== head.length) {
+      errors.push(`${name} ${line}행: 칸 수가 제목(${head.length}칸)과 다릅니다 (${cells.length}칸).`);
+      continue;
+    }
+    if (/취소|반품/.test(at(cells, m.status))) { excluded++; continue; }
+    const raw = at(cells, m.cols.date);
+    const date = raw.slice(0, 10).replace(/[./]/g, "-");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push(`${name} ${line}행 ${m.cols.date}: 날짜 형식(YYYY-MM-DD)이 아닙니다 — "${raw}"`);
+    if (!at(cells, m.cols.product)) errors.push(`${name} ${line}행 ${m.cols.product}: 비어 있습니다.`);
+    for (const k of ["units", "revenue"]) {
+      const v = at(cells, m.cols[k]);
+      if (!isNumber(num(v))) errors.push(`${name} ${line}행 ${m.cols[k]}: 0 이상의 숫자가 아닙니다 — "${v}"`);
+    }
+    rows.push({ date, product: at(cells, m.cols.product), channel: m.channel,
+      revenue: num(at(cells, m.cols.revenue)), units: num(at(cells, m.cols.units)), purchases: "1" });
+  }
+  if (!errors.length && !rows.length) errors.push(`${name}: 매출로 셀 주문이 없습니다 (취소 · 반품 ${excluded}건 제외).`);
+  if (errors.length) return { rows: [], errors, excluded };
+  return { rows, errors, excluded, note: `${m.label} ${rows.length}건${excluded ? `(취소 · 반품 ${excluded}건 제외)` : ""}` };
+}
 
 // RFC 4180 방식: 따옴표로 감싼 칸 안의 쉼표 · 줄바꿈은 칸의 일부, "" 는 따옴표 하나
 export function parseCSV(text) {
@@ -45,7 +88,12 @@ export function readTable(name, text) {
   const table = parseCSV(text);
   if (table.length === 0) return { rows: [], errors: [`${name}: 빈 파일입니다.`] };
   const head = table[0].map((h) => h.trim());
+  const market = MARKET_FORMATS.find((m) => m.need.every((k) => head.includes(k)));
+  if (market) return readMarket(name, table, head, market);
   const missing = REQUIRED.filter((k) => !head.includes(k));
+  if (missing.length && looksRawExport(head)) {
+    return { rows: [], rawExport: true, errors: [`${name}: 제목 줄이 한국어라 마켓 주문내역 원본으로 보입니다 — 이 툴은 원본을 바로 읽지 못합니다.`] };
+  }
   if (missing.length) return { rows: [], errors: [`${name}: 필수 열이 없습니다 — ${missing.join(", ")}`] };
   const numbers = NUMBER_COLUMNS.filter((k) => head.includes(k)); // 있는 숫자 열만 검사
   if (!numbers.length) return { rows: [], errors: [`${name}: 숫자 열이 하나도 없습니다 — ${NUMBER_COLUMNS.join(", ")} 중 하나 이상 필요`] };
@@ -80,11 +128,14 @@ export async function readFiles(files) {
       out.errors.push(`${f.name}: CSV 파일이 아닙니다.`);
       continue;
     }
-    const { rows, errors } = readTable(f.name, await f.text());
+    const { rows, errors, rawExport, note } = readTable(f.name, await f.text());
     out.errors.push(...errors);
+    if (rawExport) out.rawExport = true;
+    if (note) (out.notes ??= []).push(note);
     out.files.push({ name: f.name, rows: rows.length });
     out.rows.push(...rows);
   }
+  if (out.rawExport) out.errors.push(RAW_EXPORT_GUIDE);
   if (out.errors.length) out.rows = [];
   return out;
 }
