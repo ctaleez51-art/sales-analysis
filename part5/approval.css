@@ -1,3 +1,4 @@
+/* [담당5] 계획 승인 화면 — approval.js 가 만드는 #plan 스타일
    PR #2 styles.css 의 변수(--accent 등)를 쓰고, 없으면 괄호 안 기본값을 쓴다. */
 
 #plan:empty { display: none; }
