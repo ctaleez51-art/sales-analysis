@@ -56,10 +56,13 @@ const KPIS = [
   { key: "aov", label: "객단가", fmt: won },
 ];
 
-// 엔진이 없는 열을 0으로 더하는 것(R1 빈칸≠0 위반)을 막는 안전장치. csv.js 가 이 열들을 필수로 검사하므로
-// 지금은 걸릴 일이 없지만, 필수 목록이 바뀌어도 화면 · AI 에 0 이 넘어가지 않게 남겨 둔다.
-// 그 열로 만든 값만 null(계산 불가)로 바꾼다. 숫자를 새로 계산하지는 않는다.
+// 엔진이 없는 열을 0으로 더하는 것(R1 빈칸≠0 위반)을 막는 안전장치. csv.js 는 식별 3열만 필수라(10/1)
+// 판매 지표만 올린 CSV 처럼 숫자 열이 빠지면 여기서 그 열로 만든 값만 null(계산 불가)로 바꾼다. 숫자를 새로 계산하지는 않는다.
 const OPTIONAL = {
+  revenue: ["revenue", "roas", "aov", "revenue_per_visit"],
+  ad_spend: ["ad_spend", "roas", "cpc", "cpa"],
+  visits: ["visits", "cvr", "cart_rate", "revenue_per_visit"],
+  purchases: ["purchases", "cvr", "cpa", "aov", "cart_to_purchase_rate"],
   add_to_cart: ["add_to_cart", "cart_rate", "cart_to_purchase_rate"],
   impressions: ["impressions", "ctr"],
   clicks: ["clicks", "ctr", "cpc"],
@@ -67,7 +70,7 @@ const OPTIONAL = {
   refund: ["refund"],
 };
 const DIAG_COLS = ["unit_price", "competitor_min_price"]; // 쿠팡 경쟁가 진단(4번 diagnostics)
-const COL_LABEL = { add_to_cart: "장바구니", impressions: "광고 노출", clicks: "광고 클릭", units: "판매 수량", refund: "반품액", unit_price: "우리 판매가", competitor_min_price: "경쟁 최저가" };
+const COL_LABEL = { revenue: "매출", ad_spend: "광고비", visits: "방문", purchases: "구매", add_to_cart: "장바구니", impressions: "광고 노출", clicks: "광고 클릭", units: "판매 수량", refund: "반품액", unit_price: "우리 판매가", competitor_min_price: "경쟁 최저가" };
 const filled = (v) => v != null && String(v).trim() !== "";
 
 // 4번 diagnostics.evidence_rule 은 코드 식("channel=쿠팡 AND competitor_min_price < unit_price") — 화면에는 문장으로 바꿔 보여 준다.
@@ -115,6 +118,7 @@ function maskResult(result, gaps) {
   const blank = (k) => { if (k) for (const f of fields) if (f in k) k[f] = null; };
   blank(out.current);
   blank(out.previous);
+  blank(out.changes); // 전월 대비도 — 없는 열끼리 비교한 값이 남지 않게
   Object.values(out.monthly_kpis || {}).forEach(blank);
   Object.values(out.channel_kpis || {}).forEach((byMonth) => Object.values(byMonth).forEach(blank));
   const diagMissing = DIAG_COLS.filter((c) => missing.includes(c));
@@ -170,6 +174,9 @@ const UP_LINE = {
   aov: () => ["한 번에 사는 금액이", "늘었다."],
 };
 
+// 받침이 있으면 "을", 없으면 "를" (구매 전환율을 · 객단가를)
+const objParticle = (w) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return c >= 0 && c < 11172 && c % 28 ? "을" : "를"; };
+
 // 결론을 이끈 요소 — 매출이 줄면 가장 많이 줄어든 요소, 늘면 가장 많이 늘어난 요소 (±3% 안이면 없음)
 function leadFactor(changes) {
   const down = changes.revenue < 0;
@@ -192,7 +199,11 @@ function renderVerdict({ changes, current, currentPeriod, previousPeriod, channe
   else if (rev === 0) line = `${label}<span class="vl-num">전월과 같음</span>`;
   else {
     const num = `<span class="vl-num ${rev < 0 ? "v-neg" : "v-pos"}">${Math.abs(rev).toFixed(1)}% ${rev < 0 ? "감소" : "증가"}</span>`;
-    const [ctx, key] = lead ? (rev < 0 ? DOWN_LINE : UP_LINE)[lead](changes) : ["여러 요인이", rev < 0 ? "조금씩 줄었다." : "조금씩 늘었다."];
+    // 방문 · 전환율 · 객단가 중 계산 불가(없는 열)가 있으면 "여러 요인" 이라고 단정하지 않는다
+    const unknown = DECOMP.filter(({ key }) => key !== "revenue" && changes[key] == null).map(({ label }) => label);
+    const [ctx, key] = lead ? (rev < 0 ? DOWN_LINE : UP_LINE)[lead](changes)
+      : unknown.length ? [`${unknown.join(" · ")}${objParticle(unknown.at(-1))} 알 수 없어`, "원인은 나눠 볼 수 없다."]
+      : ["여러 요인이", rev < 0 ? "조금씩 줄었다." : "조금씩 늘었다."];
     line = `${label}${num}<span class="vl-why">${esc(ctx)} <b class="verdict-mark">${esc(key)}</b></span>`;
   }
   $("verdict-line").innerHTML = line;

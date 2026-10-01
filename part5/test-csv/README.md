@@ -1,11 +1,16 @@
-# 잘못된 CSV 시험 파일
+# CSV 시험 파일
 
-3번 `data/sales_2026_*.csv`에서 만든 파일입니다. [CSV 올리기]로 올리면 계산하지 않고 이유를 안내합니다.
+3번 `data/sales_2026_*.csv`에서 만든 파일입니다. [CSV 올리기]로 올려 보세요.
 
-| 파일 | 만든 방법 | 화면 안내 |
+**필수 열은 `date` · `product` · `channel` 셋뿐입니다(10/1).** 숫자 열은 있는 것만 계산하고, 없는 열로 만든 지표는 0이 아니라 "계산 불가 + 근거"로 보여 줍니다(AI에도 계산 불가로 전달).
+
+| 파일 | 만든 방법 | 화면 |
 |---|---|---|
-| `bad_format.csv` | 9월 20행, 4행 날짜 `2026/09/01`, 6행 광고비 `많음` | 행 번호 · 열 이름 · 값 |
-| `no_visits_column.csv` | 9월 20행, `visits` 열 삭제 | "필수 열이 없습니다 — visits" |
-| `required7_2026_08.csv`, `required7_2026_09.csv` | 예전 필수 7열만 남김 (둘 함께 올리기) | "필수 열이 없습니다 — unit_price, competitor_min_price, impressions, clicks, add_to_cart, units, refund" |
+| `sales_only_2026_08.csv`, `sales_only_2026_09.csv` | 판매 지표만 — date · product · channel · revenue · purchases · units (둘 함께 올리기) | 매출 · 객단가 · 추세는 계산, 광고비 · ROAS · 전환율 · CPA 는 계산 불가, 결론은 "방문 · 구매 전환율을 알 수 없어 원인은 나눠 볼 수 없다." |
+| `required7_2026_08.csv`, `required7_2026_09.csv` | 예전 필수 7열만 (둘 함께 올리기) | KPI 6개 · 결론 계산, 장바구니 · 노출 · 클릭 · 수량 · 반품 · 경쟁가 진단은 계산 불가 |
+| `no_visits_column.csv` | 9월 20행, `visits` 열 삭제 | 구매전환율 계산 불가(근거: 방문 열 없음), 나머지 계산 |
+| `bad_format.csv` | 9월 20행, 4행 날짜 `2026/09/01`, 6행 광고비 `많음` | 계산하지 않고 행 번호 · 열 이름 · 값 안내 (있는 숫자 열은 여전히 엄격) |
+
+거절되는 경우: `date` · `product` · `channel` 중 하나가 없음 / 숫자 열이 하나도 없음 / 날짜 형식이 YYYY-MM-DD 가 아님 / 있는 숫자 열에 글자 · 빈칸 · 음수.
 
 시연 순서는 `docs/presentation/DEMO.md`(PR #6)를 보세요.
