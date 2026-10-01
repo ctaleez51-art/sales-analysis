@@ -201,15 +201,32 @@
   }
 
   // AI 글에 흔한 마크다운(제목 · 목록 · 굵게)만 모양으로 바꾼다. 먼저 전부 이스케이프하므로 태그는 실행되지 않는다.
+  // 제목 줄(# 제목 · **제목** 한 줄)이 아래 네 가지면 그 아래 목록까지 한 상자로 묶는다 — 사실 · 원인 후보 · 액션을 한눈에 구분
+  const SECTIONS = [
+    { kind: "facts", re: /확인된\s*사실|사실/, icon: "✓" },
+    { kind: "hyps", re: /원인|후보|가설/, icon: "?", tag: "확정 아님" },
+    { kind: "acts", re: /액션|행동|제안|실행|해야/, icon: "→" },
+    { kind: "limits", re: /한계|주의|유의/, icon: "!" },
+  ];
   function textToHTML(text) {
     const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
     const out = [];
     let list = null; // "ul" | "ol"
+    let sec = false;
     const close = () => { if (list) { out.push(`</${list}>`); list = null; } };
+    const closeSec = () => { close(); if (sec) { out.push("</section>"); sec = false; } };
     for (const raw of String(text).split(/\r?\n/)) {
       const line = raw.trim();
       let m;
       if (!line) { close(); continue; }
+      const head = (m = line.match(/^#{1,6}\s+(.*)$/)) ? m[1] : (m = line.match(/^\*\*([^*]{1,20})\*\*\s*:?$/)) ? m[1] : null;
+      const hit = head ? SECTIONS.find((x) => x.re.test(head)) : null;
+      if (hit) {
+        closeSec();
+        out.push(`<section class="sc-sec sc-sec-${hit.kind}"><h5 class="sc-sec-h"><span class="sc-sec-ico" aria-hidden="true"><img src="icons/${hit.kind}.png" alt="" onerror="this.remove()"><i class="sc-sec-fb">${hit.icon}</i></span>${inline(head.replace(/\*\*/g, ""))}${hit.tag ? `<em class="sc-sec-tag">${hit.tag}</em>` : ""}</h5>`);
+        sec = true;
+        continue;
+      }
       if ((m = line.match(/^#{1,6}\s+(.*)$/))) { close(); out.push(`<h4 class="sc-md-h">${inline(m[1])}</h4>`); continue; }
       if ((m = line.match(/^[-*•]\s+(.*)$/)) || (m = line.match(/^\d+[.)]\s+(.*)$/))) {
         const kind = /^\d/.test(line) ? "ol" : "ul";
@@ -220,7 +237,7 @@
       close();
       out.push(`<div class="sc-md-p">${inline(line)}</div>`); // p 는 팀 styles.css `#answer p` 카드 모양이 덮는다
     }
-    close();
+    closeSec();
     return out.join("");
   }
 
@@ -228,7 +245,7 @@
     target.innerHTML = `
       <div class="sc sc-text">
         <div class="sc-text-head"><span class="sc-badge">AI 분석</span><span class="sc-badge sc-badge-plain">글 답변</span></div>
-        <div class="sc-text-body">${textToHTML(text)}</div>
+        ${((h) => `<div class="sc-text-body${h.includes("sc-sec") ? " has-secs" : ""}">${h}</div>`)(textToHTML(text))}
         <div class="sc-note">숫자는 계산 코드가 만든 값이고, AI 는 그 결과를 해석했습니다. 원인은 확정이 아닙니다.</div>
       </div>`;
   }

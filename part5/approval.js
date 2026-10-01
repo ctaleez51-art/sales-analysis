@@ -167,17 +167,32 @@
     writeLog(lastRun.p, lastRun.at, aiState(e.detail), lastRun.tries);
   });
 
+  // AI 를 기다리는 동안에는 질문 입구(FAQ · 분석하기 · Enter)를 잠근다 — 새 계획을 또 승인하면
+  // 앞 요청이 이미 서버에서 한도를 뺀 뒤라 1회가 더 줄어든다(발표 중 두 번 누르기 사고 방지)
+  let busy = false;
+  function setBusy(on) {
+    busy = on;
+    document.querySelectorAll("#ask, .faq-btn").forEach((b) => { b.disabled = on; });
+    questionEl.readOnly = on;
+    document.getElementById("ask")?.setAttribute("aria-busy", on ? "true" : "false");
+  }
+
   async function approve() {
-    if (!pending) return;
+    if (!pending || busy) return;
     const p = pending;
     pending = null;
     const at = new Date();
     lastRun = { p, at, tries: 0 };
     planEl.innerHTML = `<div class="plan-card plan-done">✓ 계획 승인됨 · ${at.toLocaleTimeString("ko-KR")} · ${esc(p.q)}</div>`;
     writeLog(p, at, { text: "진행 중", cls: "" }, 0);
-    // 여기서만 AI 를 부른다 (승인 전에는 0회)
-    const r = window.dashboard?.analyze ? await window.dashboard.analyze(p.q) : { ok: false, kind: "no-data" };
-    if (r.kind === "no-data") writeLog(p, at, aiState(r), 0); // status-card 를 거치지 않은 실패
+    setBusy(true);
+    try {
+      // 여기서만 AI 를 부른다 (승인 전에는 0회)
+      const r = window.dashboard?.analyze ? await window.dashboard.analyze(p.q) : { ok: false, kind: "no-data" };
+      if (r.kind === "no-data") writeLog(p, at, aiState(r), 0); // status-card 를 거치지 않은 실패
+    } finally {
+      setBusy(false);
+    }
   }
 
 
@@ -193,6 +208,7 @@
     window.cancelRequest?.(answerEl);
     lastRun = null;
     pending = null;
+    setBusy(false);
     planEl.innerHTML = "";
     logEl.hidden = true;
   }
@@ -207,6 +223,7 @@
     if (!faq && !ask) return;
     e.stopImmediatePropagation();
     e.preventDefault();
+    if (busy) return;
     if (faq) questionEl.value = faq.textContent.trim();
     propose(questionEl.value);
   }, true);
@@ -215,6 +232,7 @@
     if (e.target !== questionEl || e.key !== "Enter" || e.isComposing) return;
     e.stopImmediatePropagation();
     e.preventDefault();
+    if (busy) return;
     propose(questionEl.value);
   }, true);
 
