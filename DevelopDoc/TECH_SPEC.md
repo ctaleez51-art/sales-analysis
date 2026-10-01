@@ -1,7 +1,5 @@
 # 기술 명세서 - 매출분석 툴
 
-> 초안입니다. 팀 회의에서 (  ) 부분을 채워 확정합니다.
-
 | 항목 | 내용 |
 |---|---|
 | 선행 문서 | [PRD.md](./PRD.md) |
@@ -16,7 +14,7 @@
 | DB | Supabase (PostgreSQL, 로그인, 권한 RLS) | 2번 |
 | 결제 | 토스페이먼츠 | 2번 |
 | AI | OpenAI API | 4번 |
-| 배포 | GitHub Pages | (  ) |
+| 배포 | GitHub Pages | 1번 |
 
 ## 2. 구조
 ```
@@ -32,13 +30,15 @@
 ## 3. 모듈 사이 약속
 
 ### 3.1 CSV 입력단 → 지표 계산
-출처: 3번 `docs/part3_to_part4_metric_spec.md`
+출처: 3번 김보겸 지표 명세, 5번 `part5/csv.js`
 - 넘겨주는 데이터 형식: 행 객체 배열 `rows`. 키는 CSV 열 이름입니다. 여러 달의 파일을 합친 배열입니다.
-- 필수 키 7개: `date`, `product`, `channel`, `ad_spend`, `visits`, `purchases`, `revenue` (선택 키는 PRD §7)
+- 필수 키 3개: `date`, `product`, `channel`. 숫자 키(`unit_price`, `competitor_min_price`, `impressions`, `clicks`, `visits`, `add_to_cart`, `purchases`, `units`, `revenue`, `ad_spend`, `refund`)는 하나 이상 (자세한 것은 PRD §7)
+- 없는 숫자 키로 만든 지표는 대시보드(`part5/app.js`)가 `null`(계산 불가)로 바꿉니다.
+- 쿠팡, 네이버스토어 주문내역 원본은 `part5/csv.js`가 `date`, `product`, `channel`(쿠팡 또는 네이버스토어), `units`, `revenue`, `purchases`(주문 1건 = 1) 키로 바꿔 넘깁니다.
 - 월은 `date`의 앞 7글자(`2026-09`)로 나눕니다.
 
 ### 3.2 지표 계산 → 대시보드
-출처: 4번 `part4/result-engine.js`, `part4/TEAM_HANDOFF.md`
+출처: 4번 `part4/result-engine.js`
 - 계산 결과 형식: `buildResult(rows)`가 돌려주는 객체
 
 | 키 | 내용 |
@@ -55,7 +55,7 @@
 - 대시보드는 숫자를 다시 계산하지 않습니다.
 
 ### 3.3 지표 계산식
-입력단(3번)과 결과 출력단(4번)이 같은 계산식을 씁니다. 출처: 3번 `docs/part3_to_part4_metric_spec.md`
+입력단(3번)과 결과 출력단(4번)이 같은 계산식을 씁니다. 출처: 3번 김보겸 지표 명세
 
 | 지표 | 계산식 |
 |---|---|
@@ -94,19 +94,19 @@
 | POST | `/functions/v1/analyze-shop` | 계산 결과와 질문을 받아 AI 분석 글을 돌려줌. 로그인 토큰이 없으면 401, 하루 한도를 넘으면 429 (4번) |
 | POST | Supabase 로그인 (`signUp`, `signInWithPassword`, `signOut`) | 회원가입, 로그인, 로그아웃 (2번) |
 | POST | `/rest/v1/rpc/consume_analysis_quota` | 하루 사용 한도 1회 차감 (2번) |
-| (  ) | (  ) | 결제 승인 (2번) |
+| POST | `/functions/v1/confirm-payment` | 토스 결제 승인. 로그인, 주문 주인, 금액, 중복 결제, 이미 같은 요금제인지 확인한 뒤 승인하고 요금제를 프로로 바꿈 (2번) |
 
 ## 6. 폴더 구조
-PR #1~#4를 합친 뒤 기준
+10/1 main 합친 뒤 기준
 ```
 README.md
 DevelopDoc/   PRD, TECH_SPEC, WORK_UNITS, FINAL_CHECKLIST (1번)
 Submission/   STEP_CHECKLIST, SUBMISSION, ANALYSIS_SUBMISSION (1번)
-part2/        로그인 화면 (2번)
-supabase/     DB 테이블, 권한, 결제 함수 (2번)
+part2/        로그인, 결제 화면 (2번)
+supabase/     DB 테이블, 권한, 결제 함수, 결제 승인 서버 (2번)
 data/         예시 CSV 4개, 정답표 (3번)
+sample-data/  4번이 처음 시험할 때 쓴 CSV (지금 코드에서 쓰지 않음)
 tools/        예시 데이터 생성 스크립트 (3번)
-docs/         2번, 3번 설명 문서
 part4/        지표 계산, AI 서버 (4번)
 part5/        대시보드 (5번)
 ```
@@ -117,7 +117,9 @@ part5/        대시보드 (5번)
 | 이름 | 용도 | 위치 |
 |---|---|---|
 | `OPENAI_API_KEY` | OpenAI API 키 | Edge Function Secret |
-| (  ) | 토스페이먼츠 키 | 시크릿 키는 Edge Function Secret |
+| `TOSS_SECRET_KEY` | 토스페이먼츠 시크릿 키 (`test_sk_`), 결제 승인용 | Edge Function Secret |
+| Supabase secret 키 | 결제 승인 후 요금제 변경 (권한 우회) | Edge Function Secret |
+| `tossClientKey` | 토스페이먼츠 클라이언트 키 (`test_ck_`), 결제창 호출용 | `part2/config.js` (공개 가능) |
 | Supabase URL, publishable 키 | DB 접속 정보 | `part2/config.js` (브라우저 공개용 키) |
 
 ## 8. 테스트
@@ -127,7 +129,7 @@ part5/        대시보드 (5번)
 | DB 권한 | A, B 두 계정으로 서로의 데이터 접근 (`supabase/rls_test.sql`) | 10/10 통과 (2번) |
 | 로그인 | 회원가입, 틀린 비밀번호, 새로고침 후 유지, 하루 한도, 로그아웃 | 통과 (2번) |
 | CSV 오류 | 빈 파일, 필수 열 누락, 숫자 아닌 값, 날짜 형식 오류 | 오류 안내 나옴 (5번) |
-| 합친 뒤 | STEP_CHECKLIST Step 1~3 다시 해 보기 | (  ) |
+| 합친 뒤 | 10/1 main에 합친 뒤 예시 CSV 4개로 다시 계산 | 합치기 전과 같음 (9월 매출 27,356,180원, -31.45%) (1번) |
 
 ## 9. 미결정 사항
 | # | 항목 | 상태 |
@@ -136,5 +138,5 @@ part5/        대시보드 (5번)
 | T-02 | 모듈 사이 데이터 형식 (§3) | 3번, 4번 문서로 채움 |
 | T-03 | 지표 계산식 (§3.3) | 3번 명세로 채움 |
 | T-04 | DB 테이블 (§4) | 2번 schema.sql로 채움 |
-| T-05 | 배포 방법 | GitHub Pages. 담당 (  ) |
-| T-06 | 테스트 방법 | §8. 합친 뒤 결과 (  ) |
+| T-05 | 배포 방법 | GitHub Pages (`main` 브랜치, `/ (root)`). 담당 1번 이지연 |
+| T-06 | 테스트 방법 | §8. 합친 뒤 결과 같음 |

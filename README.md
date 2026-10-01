@@ -32,11 +32,14 @@ python -m http.server 8510
 ## 처음 설정 (Supabase)
 
 1. Supabase SQL Editor에서 `supabase/schema.sql`, `supabase/payment.sql` 실행
-2. Edge Function `analyze-shop`(AI 분석), `confirm-payment`(결제 승인) 배포
-3. Edge Function Secret에 아래 키 등록
-4. `part2/config.js`에 Supabase 주소와 공개 키 입력
+2. Authentication > Sign In / Providers > Email에서 Confirm email 끄기
+3. Edge Function 배포
+   - `analyze-shop`(AI 분석): `part4/supabase/functions/analyze-shop/index.ts`. Verify JWT 켬
+   - `confirm-payment`(결제 승인): `supabase/functions/confirm-payment/index.ts`. Verify JWT 끔 (로그인 확인은 함수 코드가 함)
+4. Edge Function Secret에 아래 키 등록
+5. `part2/config.js`에 Supabase 주소, 공개 키, 토스 클라이언트 키 입력 (팀 프로젝트 값은 이미 들어 있음)
 
-자세한 방법: `docs/part2_auth_db.md`, `part4/RUN.md`
+토스 키는 "API 개별 연동 키"를 씁니다. `g`가 들어간 결제위젯 키(`test_gck_`, `test_gsk_`)는 쓰지 않습니다.
 
 ## 환경변수 이름
 
@@ -53,18 +56,19 @@ python -m http.server 8510
 
 - `data/sales_2026_06.csv` ~ `sales_2026_09.csv`: 가상 건강보조식품 쇼핑몰의 6~9월 매출 (총 1,200행)
 - `data/answer_key.json`: 정답표
+- `part5/test-csv/coupang_orders_2026_09.csv`, `naver_orders_2026_09.csv`: 쿠팡, 네이버스토어 주문내역 원본 형식 시험 파일 (구매자·수취인 칸은 지움)
 - CSV 형식은 `DevelopDoc/PRD.md` §7
 
 ## 구조
 
 ```
 README.md
-DevelopDoc/   PRD, TECH_SPEC, WORK_UNITS, FINAL_CHECKLIST 등 개발 문서
+DevelopDoc/   PRD, TECH_SPEC, WORK_UNITS, FINAL_CHECKLIST
+Submission/   STEP_CHECKLIST, SUBMISSION, ANALYSIS_SUBMISSION
 part2/        로그인, 결제 화면
 supabase/     DB 테이블, 권한, 결제 함수, 결제 승인 서버
 data/         예시 CSV, 정답표
 tools/        예시 데이터 생성 스크립트
-docs/         파트별 설명 문서
 part4/        지표 계산, AI 분석 서버
 part5/        대시보드
 ```

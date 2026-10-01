@@ -1,7 +1,5 @@
 # PRD - 매출분석 툴
 
-> 초안입니다. 팀 회의에서 (  ) 부분을 채워 확정합니다.
-
 | 항목 | 내용 |
 |---|---|
 | 기간 | 2026-09-28(월) ~ 2026-10-02(금) |
@@ -28,7 +26,9 @@
 | 대시보드 | 사용자 친화적인 화면, 전체 색·글꼴·버튼 모양·위치 결정 | 5번 이두규 |
 
 ## 4. 사용 흐름
-로그인 → 결제 → CSV 업로드 → 지표 계산 → AI 분석 → 대시보드 확인
+로그인 → CSV 업로드 → 지표 계산 → 대시보드 확인 → 질문, 분석 계획 승인 → AI 분석
+
+- 무료 회원은 AI 분석을 하루 5회 쓸 수 있습니다. 넘으면 프로 요금제로 결제합니다.
 
 ## 5. 목표 단계
 | Step | 목표 |
@@ -39,11 +39,11 @@
 | 4 | 협업, 품질: PR 확인, 합친 뒤 재점검 |
 | 5 | 고급 기능, 운영 준비: 정확도 기록, 사용량 제한, 키 점검 |
 
-- 우리 팀 목표 단계: (  )
+- 우리 팀 목표 단계: Step 5
 - 단계별 통과 기준: [STEP_CHECKLIST.md](../Submission/STEP_CHECKLIST.md)
 
 ## 6. 지표 목록
-출처: 3번 `docs/part3_to_part4_metric_spec.md`
+출처: 3번 김보겸 지표 명세, 4번 `part4/result-engine.js`
 
 | 지표 | 계산식 | 단위 |
 |---|---|---|
@@ -65,32 +65,40 @@
 - 판매 채널별로도 같은 식으로 계산합니다.
 
 ## 7. CSV 형식
-출처: 3번 `docs/part3_csv_input.md`
+출처: 3번 김보겸 CSV 명세, 5번 `part5/csv.js`
 
-- 필수 열 7개: `date`(YYYY-MM-DD), `product`, `channel`, `ad_spend`, `visits`, `purchases`, `revenue`
-- 선택 열: `period_end`, `days`, `category`, `unit_price`, `discount_rate`, `competitor_min_price`, `impressions`, `clicks`, `add_to_cart`, `units`, `refund`, `holidays`, `stockout_days`
+- 필수 열 3개: `date`(YYYY-MM-DD), `product`, `channel`
+- 숫자 열 11개 중 하나 이상: `unit_price`, `competitor_min_price`, `impressions`, `clicks`, `visits`, `add_to_cart`, `purchases`, `units`, `revenue`, `ad_spend`, `refund`
+  - 있는 숫자 열만 검사합니다. 없는 열로 만든 지표는 0이 아니라 "계산 불가"로 표시합니다.
+  - 예: `date`, `channel`, `product`, `revenue` 4열만 있어도 매출 지표가 나옵니다.
+  - 14열이 모두 있으면 정답표(`data/answer_key.json`)와 전부 같습니다.
+- 쿠팡, 네이버스토어 주문내역 원본은 그대로 읽습니다. 취소·반품 주문은 매출에서 뺍니다. 다른 마켓 원본은 읽지 못하고 안내만 합니다.
+  - 쿠팡: `주문번호`, `주문일`, `등록상품명`, `구매수(수량)`, `결제액`
+  - 네이버스토어: `상품주문번호`, `주문일시`, `상품명`, `수량`, `최종 상품별 총 주문금액`
+- 선택 열: `period_end`, `days`, `category`, `discount_rate`, `holidays`, `stockout_days` (계산에 쓰지 않음. `holidays`, `stockout_days`, `discount_rate`는 정답 시나리오의 함정 변수)
 - 한 행 = 1주 구간 × 판매 채널 × 제품
 - 금액은 원 단위
 - 월별 파일 여러 개를 한 번에 올립니다. 전월 대비는 두 달 이상 있어야 나옵니다.
 - 예시 데이터: `data/sales_2026_06.csv` ~ `sales_2026_09.csv` (총 1,200행), 정답표 `data/answer_key.json`
 
 ## 8. 보안
-- API 키, 비밀번호는 코드에 넣지 않고 `.env`에 둡니다. `.env`는 GitHub에 올리지 않습니다.
+- 비밀 키(`OPENAI_API_KEY`, `TOSS_SECRET_KEY`, Supabase secret 키)는 Supabase Edge Function Secret에만 둡니다. 저장소와 브라우저 코드에 넣지 않습니다.
+- 저장소의 `part2/config.js`에는 공개해도 되는 키(Supabase publishable 키, 토스 클라이언트 키)만 넣습니다. 데이터는 DB 권한(RLS)이 지킵니다.
 - 중요한 키는 Claude에게도 직접 보여 주지 않습니다.
 
 ## 9. 일정
 | 날짜 | 목표 |
 |---|---|
-| (  ) | 역할별 1차 완성 |
-| (  ) | 합치기, 테스트 |
+| 09/29 | 역할별 1차 완성 |
+| 09/30 ~ 10/01 | 합치기, 테스트 |
 | 10/02 오전 10시 | 제출 |
 | 10/02 오후 | 발표 |
 
 ## 10. 미결정 사항
 | # | 항목 | 상태 |
 |---|---|---|
-| Q-01 | 목표 단계 | (  ) |
+| Q-01 | 목표 단계 | Step 5 (§5) |
 | Q-02 | 지표 목록 | 3번 명세로 채움 (§6) |
 | Q-03 | CSV 형식 | 3번 명세로 채움 (§7) |
 | Q-04 | 기술 스택 (TECH_SPEC.md 참고) | 팀원 구현 기준으로 채움 |
-| Q-05 | 일정 | (  ) |
+| Q-05 | 일정 | 채움 (§9) |

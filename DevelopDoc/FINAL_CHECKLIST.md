@@ -9,23 +9,23 @@
 ---
 
 ## Part A · 기능
-- [ ] 로그인
-- [ ] 결제
-- [ ] CSV 업로드
-- [ ] 지표 계산
-- [ ] AI 분석
-- [ ] 대시보드
-- [ ] (  )
+근거: [SUBMISSION.md](../Submission/SUBMISSION.md) ⑤ 테스트 결과표
+- [x] 로그인
+- [x] 결제
+- [x] CSV 업로드
+- [x] 지표 계산
+- [x] AI 분석
+- [x] 대시보드
 
 ## Part B · 보안
-- [ ] API 키, 비밀번호가 GitHub에 없음 (`.env`가 올라가지 않음)
-- [ ] (  )
+- [x] 비밀 키(`OPENAI_API_KEY`, `TOSS_SECRET_KEY`, Supabase secret 키)가 저장소에 없고 Edge Function Secret에만 있음
+- [x] `part2/config.js`에 공개 키(publishable, `test_ck_`)만 있음 (10/1 확인)
 
 ## Part C · 제출물
-- [ ] GitHub 링크
-- [ ] 저장소 맨 위에 `README.md` (서비스 소개)
-- [ ] `DevelopDoc/`에 PRD.md, TECH_SPEC.md, WORK_UNITS.md, FINAL_CHECKLIST.md
-- [ ] 시연하거나 체험할 수 있는 URL 또는 프로그램
+- [x] GitHub 링크 (https://github.com/ctaleez51-art/sales-analysis)
+- [x] 저장소 맨 위에 `README.md` (서비스 소개)
+- [x] `DevelopDoc/`에 PRD.md, TECH_SPEC.md, WORK_UNITS.md, FINAL_CHECKLIST.md
+- [x] 시연하거나 체험할 수 있는 URL 또는 프로그램 (https://ctaleez51-art.github.io/sales-analysis/)
 - [ ] 발표 자료 (역할 분담, 개발 일정 포함)
 
 ---
@@ -33,5 +33,5 @@
 ## 확인
 | 항목 | 내용 |
 |---|---|
-| 확인한 사람 | |
-| 확인한 날 | |
+| 확인한 사람 | 1번 이지연 |
+| 확인한 날 | 2026-10-01 |
