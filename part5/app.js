@@ -139,10 +139,123 @@ function showErrors(list) {
 function bars(el, items) {
   const max = Math.max(...items.map((x) => x.value ?? 0), 1);
   el.innerHTML = items.map((x) => `
-    <div class="barrow"><b>${esc(x.label)}</b>
+    <div class="barrow${x.cls ? ` ${x.cls}` : ""}"><b>${esc(x.label)}</b>
       <div class="track"><div class="bar" style="width:${Math.max(2, ((x.value ?? 0) / max) * 100)}%"></div></div>
-      <span>${esc(x.text)}${x.sub ? `<small class="${x.subTone || ""}">${esc(x.sub)}</small>` : ""}</span>
+      <span>${esc(x.text)}${x.sub ? `<small class="${x.subTone || ""}">${esc(x.sub)}</small>` : ""}${x.badge ? `<em class="bar-badge">${esc(x.badge)}</em>` : ""}</span>
     </div>`).join("");
+}
+
+// ── 매출 진단서: 결론 문장 · 분해 줄 · 채널 한 줄 ──
+// 매출 = 방문 × 구매 전환율 × 객단가 (revenue = visits × purchases/visits × revenue/purchases).
+// 네 칸 모두 4번 엔진 changes 값을 그대로 쓰고, 화면은 "어느 칸이 가장 크게 움직였나"만 고른다.
+const STEADY = 3; // ±3% 안은 "유지"
+const pct1 = (v) => (v > 0 ? "+" : "") + v.toFixed(1) + "%";
+const monthName = (p) => (p && /^\d{4}-\d{2}$/.test(p) ? `${Number(p.slice(5))}월` : p || "");
+
+const DECOMP = [
+  { key: "revenue", label: "매출" },
+  { key: "visits", label: "방문" },
+  { key: "cvr", label: "구매 전환율" },
+  { key: "aov", label: "객단가" },
+];
+// [맥락, 핵심] — 핵심만 굵게 보여 준다
+const DOWN_LINE = {
+  visits: () => ["들어오는 손님이", "줄었다."],
+  cvr: (c) => (c.visits != null && Math.abs(c.visits) < STEADY ? ["손님은 그대로인데,", "사지 않았다."] : ["들어온 손님이", "덜 샀다."]),
+  aov: () => ["한 번에 사는 금액이", "줄었다."],
+};
+const UP_LINE = {
+  visits: () => ["들어오는 손님이", "늘었다."],
+  cvr: () => ["들어온 손님이", "더 많이 샀다."],
+  aov: () => ["한 번에 사는 금액이", "늘었다."],
+};
+
+// 결론을 이끈 요소 — 매출이 줄면 가장 많이 줄어든 요소, 늘면 가장 많이 늘어난 요소 (±3% 안이면 없음)
+function leadFactor(changes) {
+  const down = changes.revenue < 0;
+  const cand = ["visits", "cvr", "aov"].filter((k) => changes[k] != null);
+  if (!cand.length) return null;
+  const pick = cand.reduce((a, b) => ((down ? changes[b] < changes[a] : changes[b] > changes[a]) ? b : a));
+  return Math.abs(changes[pick]) < STEADY || (down ? changes[pick] > 0 : changes[pick] < 0) ? null : pick;
+}
+
+function renderVerdict({ changes, current, currentPeriod, previousPeriod, channel_kpis, diagnostics }) {
+  const m = monthName(currentPeriod);
+  $("verdict-meta").textContent = `매출 진단 · ${previousPeriod ? `${previousPeriod} → ${currentPeriod}` : currentPeriod}`;
+  const rev = previousPeriod ? changes.revenue ?? null : null;
+  const lead = rev == null || rev === 0 ? null : leadFactor(changes);
+
+  let line;
+  // 세 단계 크기: 작은 맥락("9월 매출") → 가장 큰 결과("31.5% 감소") → 중간 원인(핵심 동사만 굵게)
+  const label = `<span class="vl-label">${esc(m)} 매출</span>`;
+  if (rev == null) line = `${label}<span class="vl-num">${esc(won(current.revenue))}</span><span class="verdict-sub">전월과 비교하려면 연속된 두 달 이상의 파일을 함께 올리세요.</span>`;
+  else if (rev === 0) line = `${label}<span class="vl-num">전월과 같음</span>`;
+  else {
+    const num = `<span class="vl-num ${rev < 0 ? "v-neg" : "v-pos"}">${Math.abs(rev).toFixed(1)}% ${rev < 0 ? "감소" : "증가"}</span>`;
+    const [ctx, key] = lead ? (rev < 0 ? DOWN_LINE : UP_LINE)[lead](changes) : ["여러 요인이", rev < 0 ? "조금씩 줄었다." : "조금씩 늘었다."];
+    line = `${label}${num}<span class="vl-why">${esc(ctx)} <b class="verdict-mark">${esc(key)}</b></span>`;
+  }
+  $("verdict-line").innerHTML = line;
+
+  $("decomp").innerHTML = DECOMP.map(({ key, label }, i) => {
+    const v = previousPeriod ? changes[key] ?? null : null;
+    const hit = key === lead;
+    const note = v == null ? (previousPeriod ? "계산 불가" : "전월 비교 불가") : hit ? (rev < 0 ? "여기서 무너짐" : "여기서 늘었다") : key !== "revenue" && Math.abs(v) < STEADY ? "유지" : "";
+    const cls = ["dc", key === "revenue" ? `dc-total ${v == null ? "" : v < 0 ? "dc-down" : "dc-up"}` : "", hit ? (rev < 0 ? "dc-hit" : "dc-lift") : "", v == null ? "dc-na" : ""].filter(Boolean).join(" ");
+    const op = i === 0 ? "" : `<span class="op" aria-hidden="true">${i === 1 ? "=" : "×"}</span>`;
+    return `${op}<div class="${cls}" role="listitem"><span>${esc(label)}</span><strong>${v == null ? "—" : esc(pct1(v))}</strong>${note ? `<small>${esc(note)}</small>` : ""}</div>`;
+  }).join("");
+
+  // 가장 크게 떨어진(오른) 판매 채널 — 채널 ROAS 변화는 채널 막대와 같은 percentChange
+  const chEl = $("verdict-channel");
+  const moves = previousPeriod ? Object.entries(channel_kpis).map(([ch, byMonth]) => {
+    const now = byMonth[currentPeriod], before = byMonth[previousPeriod];
+    return { ch, roas: now?.roas ?? null, v: before ? percentChange(now?.roas ?? null, before.roas) : null };
+  }).filter((x) => x.v != null) : [];
+  if (moves.length) {
+    const worst = moves.reduce((a, b) => (b.v < a.v ? b : a));
+    const under = Array.isArray(diagnostics?.coupang_undercut_products) ? diagnostics.coupang_undercut_products.length : null;
+    const tail = worst.ch === "쿠팡" && under ? ` · 쿠팡에서 경쟁 최저가보다 비싼 상품 ${under}개` : "";
+    chEl.innerHTML = worst.v < 0
+      ? `가장 크게 떨어진 판매 채널 <b>${esc(worst.ch)}</b> ROAS ${esc(times(worst.roas))} (${esc(pct1(worst.v))})${esc(tail)}`
+      : `모든 판매 채널의 ROAS가 전월보다 같거나 올랐습니다.`;
+    chEl.hidden = false;
+    state.worstChannel = worst.v < 0 ? worst.ch : null;
+  } else { chEl.hidden = true; state.worstChannel = null; }
+}
+
+// 매출 칸 추세선 — monthly_kpis 의 월별 매출을 그대로 선으로 (값이 두 개 이상일 때만)
+// 가로: 금액 눈금(옅은 점선) · 세로: 월별 기준선 · 점 위: 전월 대비 %(4번 엔진 percentChange 그대로, 연속된 달일 때만)
+const nextMonth = (p) => { const [y, m] = p.split("-").map(Number); return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`; };
+function niceStep(span) {
+  const raw = span / 2.5, mag = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 2.5, 5, 10].map((k) => k * mag).find((st) => st >= raw) || 10 * mag;
+}
+function sparkline(monthly_kpis, down) {
+  const pts = Object.entries(monthly_kpis).map(([p, k]) => [p, k.revenue]).filter(([, v]) => v != null);
+  if (pts.length < 2) return "";
+  const vals = pts.map(([, v]) => v), min = Math.min(...vals), max = Math.max(...vals), span0 = max - min || max || 1;
+  const lo = min - span0 * 0.2, hi = max + span0 * 0.45; // 위쪽은 % 라벨 자리
+  const W = 360, H = 118, L = 46, R = 18, T = 8, B = 20;
+  const x = (i) => L + (i * (W - L - R)) / (pts.length - 1);
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const step = niceStep(max - min || max * 0.1 || 1);
+  const ticks = [];
+  for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) if (t >= 0) ticks.push(t);
+  const man = (v) => `${Math.round(v / 10000).toLocaleString("ko-KR")}만`;
+  const last = pts.length - 1;
+  const pctOf = (i) => (i > 0 && nextMonth(pts[i - 1][0]) === pts[i][0] ? percentChange(pts[i][1], pts[i - 1][1]) : null);
+  const label = pts.map(([p, v], i) => { const c = pctOf(i); return `${p} ${wonShort(v)}${c == null ? "" : ` (전월 대비 ${pct1(c)})`}`; }).join(", ");
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 매출 추세: ${esc(label)}">
+    ${ticks.map((t) => `<line class="spark-grid" x1="${L}" y1="${y(t).toFixed(1)}" x2="${W - R}" y2="${y(t).toFixed(1)}"/><text class="spark-tick" x="${L - 6}" y="${(y(t) + 3.5).toFixed(1)}" text-anchor="end">${esc(man(t))}</text>`).join("")}
+    ${pts.map((_, i) => `<line class="spark-guide" x1="${x(i).toFixed(1)}" y1="${T}" x2="${x(i).toFixed(1)}" y2="${H - B}"/>`).join("")}
+    <polyline points="${pts.map(([, v], i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(([, v], i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i === last ? 5 : 3}" class="${i === last ? (down ? "spark-down" : "spark-up") : "spark-dot"}"/>`).join("")}
+    ${pts.map(([, v], i) => { const c = pctOf(i); if (c == null) return ""; const cls = i === last ? (c < 0 ? "spark-pct spark-pct-neg" : "spark-pct spark-pct-pos") : "spark-pct"; // 마지막 점은 선이 위에서 내려오므로 라벨을 점 왼쪽 같은 높이(선 아래 빈 곳)에 둔다
+      const lx = i === last ? x(i) - 10 : x(i), ly = i === last ? y(v) + 4.5 : y(v) - 10;
+      return `<text class="${cls}" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${i === last ? "end" : "middle"}">${esc(pct1(c))}</text>`; }).join("")}
+    ${pts.map(([p], i) => `<text class="spark-month" x="${x(i).toFixed(1)}" y="${H - 4}" text-anchor="middle">${esc(monthName(p))}</text>`).join("")}
+  </svg>`;
 }
 
 function render(rows, source) {
@@ -157,17 +270,23 @@ function render(rows, source) {
     return;
   }
 
-  // KPI 6칸
-  $("kpis").innerHTML = KPIS.map(({ key, label, fmt }) => {
+  // 맨 위 결론 문장 · 분해 줄 · 채널 한 줄
+  renderVerdict(result);
+
+  // KPI 6칸 — 매출은 맨 앞 큰 칸(추세선), 나머지 5칸은 작게
+  $("kpis").innerHTML = KPIS.map(({ key, label, fmt }, i) => {
     const v = changes[key] ?? null;
     const why = current[key] == null ? whyNull(current, key, gaps) : "";
-    return `<article><span>${esc(label)}</span><strong>${esc(fmt(current[key]))}</strong>
+    const body = `<span>${esc(label)}</span><strong>${esc(fmt(current[key]))}</strong>
       ${why ? `<small class="why">근거: ${esc(why)}</small>` : ""}
-      <small class="${tone(key, v)}">${esc(signed(v))}${v == null ? "" : " 전월 대비"}</small></article>`;
+      <small class="${tone(key, v)}">${esc(signed(v))}${v == null ? "" : " 전월 대비"}</small>`;
+    return i === 0
+      ? `<article class="kpi-lead"><div>${body}</div><div class="spark-wrap">${sparkline(monthly_kpis, (v ?? 0) < 0) || `<p class="spark-empty">두 달 이상 올리면 월별 매출 추세가 여기에 보입니다.</p>`}</div></article>`
+      : `<article>${body}</article>`;
   }).join("");
 
-  // 월별 매출
-  bars($("months"), Object.entries(monthly_kpis).map(([p, k]) => ({ label: p, value: k.revenue, text: wonShort(k.revenue) })));
+  // 월별 매출 — 이번 달 막대만 강조
+  bars($("months"), Object.entries(monthly_kpis).map(([p, k]) => ({ label: p, value: k.revenue, text: wonShort(k.revenue), cls: p === currentPeriod ? "is-current" : "" })));
 
   // 없는 열 안내 — 해당 칸은 "계산 불가"
   const gapsEl = $("gaps");
@@ -185,15 +304,19 @@ function render(rows, source) {
     ["장바구니", current.add_to_cart, noCart ? `근거: ${gaps.add_to_cart || "장바구니 값 없음"}` : current.cart_rate == null ? `근거: ${whyNull(current, "cart_rate", gaps)}` : `방문의 ${rate(current.cart_rate)}`],
     ["구매", current.purchases, noCart ? `방문의 ${rate(current.cvr)}` : current.cart_to_purchase_rate == null ? `근거: ${whyNull(current, "cart_to_purchase_rate", gaps)}` : `장바구니의 ${rate(current.cart_to_purchase_rate)}`],
   ];
-  $("funnel").innerHTML = steps.map(([name, n, note], i) =>
-    `<div class="funnel-step" style="width:${100 - i * 18}%"><b>${name}</b> ${esc(count(n))}${note ? ` <small>${esc(note)}</small>` : ""}</div>`).join("");
+  // 폭은 같게 둔다 — 폭을 줄이면 실제 낙폭과 상관없는 모양이 된다. 비율 글자로 낙폭을 보여 준다
+  $("funnel").innerHTML = steps.map(([name, n, note]) =>
+    `<div class="funnel-step"><b>${name}</b> <span class="fn-n">${esc(count(n))}</span>${note ? ` <small>${esc(note)}</small>` : ""}</div>`).join("");
 
-  // 판매 채널별 (이번 달 ROAS, 전월 대비)
+  // 판매 채널별 (이번 달 ROAS, 전월 대비) — 채널마다 고유색(이름으로 고정), 가장 크게 떨어진 채널은 빨간 이름 + 표시
+  const CH_COLOR = { 쿠팡: 1, 네이버스토어: 2, 자사몰: 3 };
+  let extra = 3;
   bars($("channels"), Object.entries(channel_kpis).map(([ch, byMonth]) => {
     const now = byMonth[currentPeriod], before = previousPeriod ? byMonth[previousPeriod] : null;
     const v = before ? percentChange(now?.roas ?? null, before.roas) : null;
     const why = now?.roas == null ? whyNull(now, "roas", gaps) : "";
-    return { label: ch, value: now?.roas, text: times(now?.roas ?? null), sub: why ? ` 근거: ${why}` : v == null ? "" : ` ${signed(v)}`, subTone: why ? "" : tone("roas", v) };
+    return { label: ch, value: now?.roas, text: times(now?.roas ?? null), sub: why ? ` 근거: ${why}` : v == null ? "" : ` ${signed(v)}`, subTone: why ? "" : tone("roas", v),
+      cls: `ch-${CH_COLOR[ch] || (extra++ % 5) + 1}${ch === state.worstChannel ? " is-worst" : ""}`, badge: ch === state.worstChannel ? "가장 크게 하락" : "" };
   }));
 
   // 경쟁가 진단 (4번 diagnostics)
@@ -214,14 +337,19 @@ function render(rows, source) {
       : `<p>${esc(currentPeriod)} 쿠팡에서 경쟁 최저가가 더 낮은 제품이 없습니다.</p>`;
   } else diagEl.hidden = true;
 
-  // 한 줄 요약 — changes 값을 그대로 옮긴다.
+  // 결론 영역 맨 아래 한 줄 — 분해 줄에 없는 것(광고비)만 보탠다. changes 값을 그대로 옮긴다.
   // 4번 엔진은 바로 앞 달(연속된 달)이 있을 때만 previousPeriod 를 준다 — 6월 · 9월만 올리면 비교하지 않는다
   const months = Object.keys(monthly_kpis);
+  const ad = changes.ad_spend, buy = changes.purchases;
   $("insight").textContent = previousPeriod
-    ? `${previousPeriod} → ${currentPeriod}: 광고비 ${signed(changes.ad_spend)}, 방문 ${signed(changes.visits)}에 비해 구매 ${signed(changes.purchases)}, 매출 ${signed(changes.revenue)}입니다.`
+    ? ad == null || buy == null
+      ? ""
+      : ad > 0 && buy < 0
+        ? `광고비는 ${pct1(ad)} 늘렸지만 구매는 ${pct1(buy)}.`
+        : `광고비 ${pct1(ad)} · 구매 ${pct1(buy)}.`
     : months.length > 1
-      ? `${currentPeriod} 바로 앞 달 데이터가 없어 전월 비교를 할 수 없습니다(올린 달: ${months.join(", ")}). 연속된 달의 파일을 함께 올려 주세요.`
-      : `${currentPeriod} 한 달치만 있어 전월 비교를 할 수 없습니다. 두 달 이상의 파일을 함께 올려 주세요.`;
+      ? `올린 달: ${months.join(", ")} — 바로 앞 달이 없어 비교하지 않았습니다.`
+      : "";
 
   // 필요한 열이 없는 질문 버튼은 숨긴다 (data-needs). 열이 다 있는 파일을 올리면 다시 보인다
   document.querySelectorAll(".faq-btn[data-needs]").forEach((b) => {
